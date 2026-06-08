@@ -29,11 +29,25 @@ const SVG_W = PAD_LEFT + (BOARD_SIZE - 1) * STEP + (MAX_LAYERS + 1) * DX + CW + 
 const SVG_H = PAD_TOP  + BOARD_SIZE * STEP - GAP + PAD;
 
 // --- Colour palette ---
-const FACE = {
+const BASE_COLOR = {
   red:  { fill: '#c0392b', edge: '#7b241c' },
   blue: { fill: '#2980b9', edge: '#154360' },
   grey: { fill: '#95a5a6', edge: '#4b5657' },
 };
+
+function darkenHex(hex, factor) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.round(((n >> 16) & 0xff) * factor));
+  const g = Math.max(0, Math.round(((n >> 8)  & 0xff) * factor));
+  const b = Math.max(0, Math.round((n & 0xff)         * factor));
+  return `rgb(${r},${g},${b})`;
+}
+
+function tileColor(color, layer) {
+  const base = BASE_COLOR[color] ?? BASE_COLOR.grey;
+  const f = 1 - layer * 0.1; // ~10% darker per layer
+  return { fill: darkenHex(base.fill, f), edge: darkenHex(base.edge, f) };
+}
 const GROUND_FILL   = '#ece7da';
 const GROUND_STROKE = '#cfc6b0';
 
@@ -111,7 +125,7 @@ export default function StackedBoard({
           );
         }
 
-        const { fill, edge } = FACE[el.color] ?? FACE.grey;
+        const { fill, edge } = tileColor(el.color, el.layer);
         return (
           <g key={key} pointerEvents="none">
             {/* side faces visible below this tile */}
