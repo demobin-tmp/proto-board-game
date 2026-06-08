@@ -131,50 +131,9 @@
   justify-content: center;
 }
 
-.board-grid {
-  display: inline-flex;
-  flex-direction: column;
-  border: 2px solid #2b2a26;
+.iso-board {
+  max-width: 100%;
   border-radius: 4px;
-  overflow: hidden;
-}
-
-.board-row {
-  display: flex;
-}
-
-.board-cell {
-  width: 44px;
-  height: 44px;
-  border: 1px solid rgba(43, 42, 38, 0.25);
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 2px;
-  position: relative;
-}
-
-.board-cell.preview-legal {
-  outline: 3px solid #2e8b57;
-  outline-offset: -3px;
-  z-index: 1;
-}
-
-.board-cell.preview-illegal {
-  outline: 3px solid #c0392b;
-  outline-offset: -3px;
-  z-index: 1;
-}
-
-.board-cell.inspected {
-  box-shadow: inset 0 0 0 3px #2b2a26;
-}
-
-.height-badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* Stack inspector */
