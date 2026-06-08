@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import Board from './Board';
+import StackedBoard from './StackedBoard';
 import ShapeOffer from './ShapeOffer';
 import ScorePanel from './ScorePanel';
 import StackInspector from './StackInspector';
@@ -64,7 +64,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
       {turnMessage && <p className="turn-indicator">{turnMessage}</p>}
 
       <div className="board-area">
-        <Board
+        <StackedBoard
           board={G.board}
           heights={G.heights}
           preview={preview}

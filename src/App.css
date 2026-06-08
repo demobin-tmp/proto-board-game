@@ -72,6 +72,11 @@
   font-size: 0.85rem;
 }
 
+.stacked-board {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
 /* Game board */
 
 .game-board {
