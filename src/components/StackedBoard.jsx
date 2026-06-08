@@ -4,7 +4,7 @@ import { BOARD_SIZE } from '../game/shapes';
 // --- Layout constants ---
 const CW   = 44;   // cell width
 const CH   = 44;   // cell height
-const GAP  = 2;    // gap between cells
+const GAP  = 0;    // no gap — pieces render as one connected shape
 const STEP = CW + GAP;
 const DX   = 4;    // shift right per layer
 const DY   = 6;    // shift up per layer
@@ -75,8 +75,16 @@ export default function StackedBoard({
         }
       }
     }
-    // Draw lower layers first so higher layers paint on top
-    items.sort((a, b) => a.layer - b.layer);
+    // Ground always renders before any tile (ground cells share layer=0 with
+    // first-layer tiles, but must be below them). Then tiles low→high layer,
+    // bottom-left first within each layer.
+    items.sort((a, b) => {
+      const la = a.kind === 'ground' ? -1 : a.layer;
+      const lb = b.kind === 'ground' ? -1 : b.layer;
+      if (la !== lb) return la - lb;
+      if (a.row !== b.row) return a.row - b.row;
+      return b.col - a.col;
+    });
     return items;
   }, [board, heights]);
 
@@ -110,9 +118,7 @@ export default function StackedBoard({
             <LeftFace   x={x} y={y} color={edge} />
             <BottomFace x={x} y={y} color={edge} />
             {/* main face */}
-            <rect x={x} y={y} width={CW} height={CH}
-              fill={fill}
-              stroke={edge} strokeWidth={0.75} />
+            <rect x={x} y={y} width={CW} height={CH} fill={fill} stroke="rgba(0,0,0,0.15)" strokeWidth={0.75} />
           </g>
         );
       })}
