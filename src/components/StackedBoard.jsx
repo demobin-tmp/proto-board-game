@@ -11,16 +11,22 @@ const DY   = 6;    // shift up per layer
 const PAD  = 8;
 const MAX_LAYERS = 10;
 
-// Top of SVG needs extra room so stacks on row 0 don't shift above the canvas
-const PAD_TOP = PAD + MAX_LAYERS * DY;
+// Ground sits at the base. Tiles start one step above (layer+1) so that
+// layer-0 depth faces connect down to the ground plane, not below it.
+const PAD_LEFT = PAD;
+const PAD_TOP  = PAD + (MAX_LAYERS + 1) * DY;  // +1 for the extra tile-above-ground step
 
-// Top-left corner of cell (col, row) at the given layer
-function tx(col, layer) { return PAD + col * STEP + layer * DX; }
-function ty(row, layer) { return PAD_TOP + row * STEP - layer * DY; }
+// Ground position (no layer shift)
+function gx(col) { return PAD_LEFT + col * STEP; }
+function gy(row) { return PAD_TOP  + row * STEP; }
+
+// Tile position: layer 0 is one step above ground, layer 1 two steps, etc.
+function tx(col, layer) { return gx(col) + (layer + 1) * DX; }
+function ty(row, layer) { return gy(row) - (layer + 1) * DY; }
 
 // SVG canvas
-const SVG_W = PAD * 2 + BOARD_SIZE * STEP - GAP + MAX_LAYERS * DX;
-const SVG_H = PAD_TOP + PAD + BOARD_SIZE * STEP - GAP;
+const SVG_W = PAD_LEFT + (BOARD_SIZE - 1) * STEP + (MAX_LAYERS + 1) * DX + CW + PAD;
+const SVG_H = PAD_TOP  + BOARD_SIZE * STEP - GAP + PAD;
 
 // --- Colour palette ---
 const FACE = {
@@ -31,18 +37,19 @@ const FACE = {
 const GROUND_FILL   = '#ece7da';
 const GROUND_STROKE = '#cfc6b0';
 
-// Right-side parallelogram: the DX-wide strip that sticks out when a tile
-// is shifted right relative to the tile below it.
-function RightFace({ x, y, color }) {
-  // goes: (x+CW, y) → (x+CW+DX, y-DY) → (x+CW+DX, y+CH-DY) → (x+CW, y+CH)
-  const pts = `${x+CW},${y} ${x+CW+DX},${y-DY} ${x+CW+DX},${y+CH-DY} ${x+CW},${y+CH}`;
+// Left face: the strip visible to the left because the tile is shifted right.
+// Connects the tile's left edge to the equivalent position one layer down.
+function LeftFace({ x, y, color }) {
+  // (x,y) → (x-DX, y+DY) → (x-DX, y+CH+DY) → (x, y+CH)
+  const pts = `${x},${y} ${x-DX},${y+DY} ${x-DX},${y+CH+DY} ${x},${y+CH}`;
   return <polygon points={pts} fill={color} />;
 }
 
-// Top-side parallelogram: the DY-tall strip visible above the tile below.
-function TopFace({ x, y, color }) {
-  // goes: (x, y) → (x+DX, y-DY) → (x+CW+DX, y-DY) → (x+CW, y)
-  const pts = `${x},${y} ${x+DX},${y-DY} ${x+CW+DX},${y-DY} ${x+CW},${y}`;
+// Bottom face: the strip visible below because the tile is shifted up.
+// Connects the tile's bottom edge to the equivalent position one layer down.
+function BottomFace({ x, y, color }) {
+  // (x,y+CH) → (x-DX, y+CH+DY) → (x+CW-DX, y+CH+DY) → (x+CW, y+CH)
+  const pts = `${x},${y+CH} ${x-DX},${y+CH+DY} ${x+CW-DX},${y+CH+DY} ${x+CW},${y+CH}`;
   return <polygon points={pts} fill={color} />;
 }
 
@@ -90,7 +97,7 @@ export default function StackedBoard({
 
         if (el.kind === 'ground') {
           return (
-            <rect key={key} x={x} y={y} width={CW} height={CH}
+            <rect key={key} x={gx(el.col)} y={gy(el.row)} width={CW} height={CH}
               fill={GROUND_FILL} stroke={GROUND_STROKE} strokeWidth={1}
               pointerEvents="none" />
           );
@@ -100,8 +107,8 @@ export default function StackedBoard({
         return (
           <g key={key} pointerEvents="none">
             {/* side faces visible below this tile */}
-            <RightFace x={x} y={y} color={edge} />
-            <TopFace   x={x} y={y} color={edge} />
+            <LeftFace   x={x} y={y} color={edge} />
+            <BottomFace x={x} y={y} color={edge} />
             {/* main face */}
             <rect x={x} y={y} width={CW} height={CH}
               fill={fill}
@@ -122,8 +129,8 @@ export default function StackedBoard({
         const stroke    = ok ? '#2e8b57' : '#c0392b';
         return (
           <g key={`prev-${row}-${col}`} pointerEvents="none">
-            <RightFace x={x} y={y} color={ghostEdge} />
-            <TopFace   x={x} y={y} color={ghostEdge} />
+            <LeftFace   x={x} y={y} color={ghostEdge} />
+            <BottomFace x={x} y={y} color={ghostEdge} />
             <rect x={x} y={y} width={CW} height={CH}
               fill={ghostFill} stroke={stroke} strokeWidth={1.5} />
           </g>
@@ -134,8 +141,9 @@ export default function StackedBoard({
       {inspectedCell && (() => {
         const { row, col } = inspectedCell;
         const layer = heights[row][col];
-        const x = tx(col, layer === 0 ? 0 : layer);
-        const y = ty(row, layer === 0 ? 0 : layer);
+        // highlight ground cell when empty, top tile when stacked
+        const x = layer === 0 ? gx(col) : tx(col, layer - 1);
+        const y = layer === 0 ? gy(row) : ty(row, layer - 1);
         return (
           <rect x={x} y={y} width={CW} height={CH}
             fill="rgba(43,42,38,0.18)" stroke="#2b2a26" strokeWidth={2}
@@ -148,8 +156,8 @@ export default function StackedBoard({
         Array.from({ length: BOARD_SIZE }, (_, col) => (
           <rect
             key={`hit-${row}-${col}`}
-            x={PAD + col * STEP}
-            y={PAD_TOP + row * STEP}
+            x={gx(col)}
+            y={gy(row)}
             width={CW}
             height={CH}
             fill="transparent"
