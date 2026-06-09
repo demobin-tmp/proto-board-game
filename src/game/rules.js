@@ -33,6 +33,13 @@ export function validatePlacement(board, heights, cells, kind, placerColor) {
     return { legal: false, reason: 'overhang' };
   }
 
+  if (landingHeight > 0) {
+    const ids = new Set(cells.map(([r, c]) => board[r][c][landingHeight - 1].tileId));
+    if (ids.size < 2) {
+      return { legal: false, reason: 'must cover at least 2 distinct tiles when stacking' };
+    }
+  }
+
   if (kind === 'color') {
     const colorsMatch = cells.every(([row, col]) => {
       const color = topColor(board, row, col);

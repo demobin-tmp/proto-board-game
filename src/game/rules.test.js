@@ -42,8 +42,8 @@ describe('validatePlacement', () => {
   it('lets a player stack on their own color or grey, but not the opponent color', () => {
     const board = emptyBoard();
     const heights = emptyHeights();
-    board[0][0].push({ color: 'blue' });
-    board[0][1].push({ color: 'grey' });
+    board[0][0].push({ color: 'blue', tileId: 'a' });
+    board[0][1].push({ color: 'grey', tileId: 'b' });
     heights[0][0] = 1;
     heights[0][1] = 1;
     const cells = [[0, 0], [0, 1]];
@@ -55,8 +55,8 @@ describe('validatePlacement', () => {
   it('lets grey tiles land on any color, ignoring the matching rule', () => {
     const board = emptyBoard();
     const heights = emptyHeights();
-    board[0][0].push({ color: 'red' });
-    board[0][1].push({ color: 'blue' });
+    board[0][0].push({ color: 'red', tileId: 'a' });
+    board[0][1].push({ color: 'blue', tileId: 'b' });
     heights[0][0] = 1;
     heights[0][1] = 1;
 
