@@ -171,44 +171,11 @@
   z-index: 1;
 }
 
-.board-cell.inspected {
-  box-shadow: inset 0 0 0 3px #2b2a26;
-}
-
 .height-badge {
   font-size: 0.7rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.95);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-/* Stack inspector */
-
-.stack-inspector {
-  width: 200px;
-  border: 1px solid #d8cfb8;
-  border-radius: 8px;
-  padding: 0.75rem;
-  background: #fff;
-}
-
-.stack-inspector h2 {
-  margin: 0 0 0.5rem;
-  font-size: 0.95rem;
-}
-
-.cross-section {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 2px;
-}
-
-.cross-section-layer {
-  padding: 0.35rem 0.5rem;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 0.8rem;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 /* Shape offer */

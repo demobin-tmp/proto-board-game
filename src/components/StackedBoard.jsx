@@ -77,7 +77,7 @@ function sameId(board, heights, row, col, layer, id) {
 }
 
 export default function StackedBoard({
-  board, heights, preview, inspectedCell, onHoverCell, onClickCell,
+  board, heights, preview, onHoverCell, onClickCell,
 }) {
   const elements = useMemo(() => {
     const items = [];
@@ -208,20 +208,6 @@ export default function StackedBoard({
           </g>
         );
       })}
-
-      {/* ── Inspected-cell outline ── */}
-      {inspectedCell && (() => {
-        const { row, col } = inspectedCell;
-        const layer = heights[row][col];
-        // highlight ground cell when empty, top tile when stacked
-        const x = layer === 0 ? gx(col) : tx(col, layer - 1);
-        const y = layer === 0 ? gy(row) : ty(row, layer - 1);
-        return (
-          <rect x={x} y={y} width={CW} height={CH}
-            fill="rgba(43,42,38,0.18)" stroke="#2b2a26" strokeWidth={2}
-            pointerEvents="none" />
-        );
-      })()}
 
       {/* ── Hit targets: transparent rects at base position, always on top ── */}
       {Array.from({ length: BOARD_SIZE }, (_, row) =>

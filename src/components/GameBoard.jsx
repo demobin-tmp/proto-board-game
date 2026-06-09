@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import StackedBoard from './StackedBoard';
 import ShapeOffer from './ShapeOffer';
 import ScorePanel from './ScorePanel';
-import StackInspector from './StackInspector';
 import { absoluteCells, validatePlacement } from '../game/rules';
 import { getShape } from '../game/shapes';
 import { PLAYER_COLORS } from '../game/game';
@@ -14,7 +13,6 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const [selectedOfferIndex, setSelectedOfferIndex] = useState(null);
   const [rotationIndex, setRotationIndex] = useState(0);
   const [hoveredCell, setHoveredCell] = useState(null);
-  const [inspectedCell, setInspectedCell] = useState(null);
 
   const myColor = PLAYER_COLORS[playerID];
   const currentColor = PLAYER_COLORS[ctx.currentPlayer];
@@ -42,7 +40,6 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   }
 
   function clickCell(row, col) {
-    setInspectedCell({ row, col });
     if (!isActive || selectedOfferIndex == null || !preview?.legal) return;
     moves.placeShape(selectedOfferIndex, activeRotation, row, col);
     setSelectedOfferIndex(null);
@@ -68,11 +65,9 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
           board={G.board}
           heights={G.heights}
           preview={preview}
-          inspectedCell={inspectedCell}
           onHoverCell={setHoveredCell}
           onClickCell={clickCell}
         />
-        <StackInspector board={G.board} cell={inspectedCell} />
       </div>
 
       <ShapeOffer
