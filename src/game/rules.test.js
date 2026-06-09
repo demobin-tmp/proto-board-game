@@ -52,6 +52,29 @@ describe('validatePlacement', () => {
     expect(validatePlacement(board, heights, cells, 'color', 'blue').legal).toBe(true);
   });
 
+  it('rejects stacking on only one distinct underlying tile', () => {
+    const board = emptyBoard();
+    const heights = emptyHeights();
+    // Both cells belong to the same tileId
+    board[0][0].push({ color: 'red', tileId: 'a' });
+    board[0][1].push({ color: 'red', tileId: 'a' });
+    heights[0][0] = 1;
+    heights[0][1] = 1;
+
+    expect(validatePlacement(board, heights, [[0, 0], [0, 1]], 'color', 'red').legal).toBe(false);
+  });
+
+  it('allows stacking when footprint covers at least 2 distinct underlying tiles', () => {
+    const board = emptyBoard();
+    const heights = emptyHeights();
+    board[0][0].push({ color: 'red', tileId: 'a' });
+    board[0][1].push({ color: 'red', tileId: 'b' });
+    heights[0][0] = 1;
+    heights[0][1] = 1;
+
+    expect(validatePlacement(board, heights, [[0, 0], [0, 1]], 'color', 'red').legal).toBe(true);
+  });
+
   it('lets grey tiles land on any color, ignoring the matching rule', () => {
     const board = emptyBoard();
     const heights = emptyHeights();
