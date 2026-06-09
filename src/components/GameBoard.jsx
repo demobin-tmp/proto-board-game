@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import StackedBoard from './StackedBoard';
 import ShapeOffer from './ShapeOffer';
+import UpcomingShapes from './UpcomingShapes';
 import ScorePanel from './ScorePanel';
 import { absoluteCells, validatePlacement } from '../game/rules';
 import { getShape } from '../game/shapes';
-import { PLAYER_COLORS } from '../game/game';
+import { PLAYER_COLORS, OFFER_SIZE, PREVIEW_SIZE, ringWindow } from '../game/game';
 
 // This is the `board` component handed to boardgame.io's Client. It receives
 // the synced game state (G, ctx) plus a `moves` object whose calls are sent to
@@ -16,7 +17,15 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
 
   const myColor = PLAYER_COLORS[playerID];
   const currentColor = PLAYER_COLORS[ctx.currentPlayer];
-  const selectedTile = selectedOfferIndex != null ? G.offer[selectedOfferIndex] : null;
+
+  const ringEntries = useMemo(
+    () => ringWindow(G.ring, G.tokenIndex, OFFER_SIZE + PREVIEW_SIZE),
+    [G.ring, G.tokenIndex]
+  );
+  const offer = useMemo(() => ringEntries.slice(0, OFFER_SIZE).map((entry) => entry.tile), [ringEntries]);
+  const upcoming = useMemo(() => ringEntries.slice(OFFER_SIZE).map((entry) => entry.tile), [ringEntries]);
+
+  const selectedTile = selectedOfferIndex != null ? offer[selectedOfferIndex] : null;
   const rotations = selectedTile ? getShape(selectedTile.shapeId).rotations : null;
   const activeRotation = rotations ? rotationIndex % rotations.length : 0;
 
@@ -71,7 +80,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
       </div>
 
       <ShapeOffer
-        offer={G.offer}
+        offer={offer}
         currentColor={currentColor}
         isActive={isActive}
         selectedIndex={selectedOfferIndex}
@@ -79,6 +88,8 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         onSelect={selectOffer}
         onRotate={rotateSelection}
       />
+
+      <UpcomingShapes tiles={upcoming} />
     </div>
   );
 }

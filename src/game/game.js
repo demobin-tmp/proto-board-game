@@ -4,7 +4,14 @@ import { INVALID_MOVE } from 'boardgame.io/dist/cjs/core.js';
 import { BOARD_SIZE, buildTileSupply, getShape } from './shapes';
 import { absoluteCells, validatePlacement, scoreForPlacement } from './rules';
 
-const OFFER_SIZE = 3;
+// Patchwork-style ring: every tile in the supply gets a fixed slot in a
+// circle. A neutral token marks a slot; the offer is the next OFFER_SIZE
+// non-empty slots clockwise from it, and PREVIEW_SIZE more beyond that are
+// shown as a non-selectable preview. Picking a tile empties its slot and
+// moves the token there, so skipped tiles stay put and only resurface once
+// the token comes back around to them.
+export const OFFER_SIZE = 3;
+export const PREVIEW_SIZE = 3;
 
 // Seat '0' always plays red, seat '1' always plays blue.
 export const PLAYER_COLORS = { '0': 'red', '1': 'blue' };
@@ -19,31 +26,35 @@ function emptyHeights() {
   return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
 }
 
-function refillOffer(G) {
-  while (G.offer.length < OFFER_SIZE && G.drawPile.length > 0) {
-    G.offer.push(G.drawPile.pop());
+// Returns up to `count` { tile, ringIndex } entries for the non-empty slots
+// walking clockwise from the token, in order.
+export function ringWindow(ring, tokenIndex, count) {
+  const entries = [];
+  const n = ring.length;
+  for (let step = 1; step <= n && entries.length < count; step++) {
+    const idx = (((tokenIndex + step) % n) + n) % n;
+    if (ring[idx]) entries.push({ tile: ring[idx], ringIndex: idx });
   }
+  return entries;
 }
 
 export const StackingGame = {
   name: 'stacking-tiles',
 
-  setup: ({ random }) => {
-    const G = {
-      board: emptyBoard(),
-      heights: emptyHeights(),
-      scores: { red: 0, blue: 0 },
-      drawPile: random.Shuffle(buildTileSupply()),
-      offer: [],
-    };
-    refillOffer(G);
-    return G;
-  },
+  setup: ({ random }) => ({
+    board: emptyBoard(),
+    heights: emptyHeights(),
+    scores: { red: 0, blue: 0 },
+    ring: random.Shuffle(buildTileSupply()),
+    tokenIndex: -1,
+  }),
 
   moves: {
     placeShape: ({ G, ctx, events }, offerIndex, rotationIndex, row, col) => {
-      const tile = G.offer[offerIndex];
-      if (!tile) return INVALID_MOVE;
+      const offer = ringWindow(G.ring, G.tokenIndex, OFFER_SIZE);
+      const entry = offer[offerIndex];
+      if (!entry) return INVALID_MOVE;
+      const tile = entry.tile;
 
       const shape = getShape(tile.shapeId);
       if (!shape.rotations[rotationIndex]) return INVALID_MOVE;
@@ -65,15 +76,15 @@ export const StackingGame = {
         G.scores[placerColor] += scoreForPlacement(cells.length, result.landingHeight);
       }
 
-      G.offer.splice(offerIndex, 1);
-      refillOffer(G);
+      G.ring[entry.ringIndex] = null;
+      G.tokenIndex = entry.ringIndex;
 
       events.endTurn();
     },
   },
 
   endIf: ({ G }) => {
-    if (G.drawPile.length > 0 || G.offer.length > 0) return;
+    if (ringWindow(G.ring, G.tokenIndex, 1).length > 0) return;
 
     const { red, blue } = G.scores;
     if (red === blue) return { draw: true, scores: G.scores };
