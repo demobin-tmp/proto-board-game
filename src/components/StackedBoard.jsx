@@ -67,6 +67,15 @@ function BottomFace({ x, y, color }) {
   return <polygon points={pts} fill={color} />;
 }
 
+// Returns true if the neighbour cell at (row,col) has a tile at `layer`
+// belonging to the same tileId.
+function sameId(board, heights, row, col, layer, id) {
+  return row >= 0 && row < BOARD_SIZE &&
+         col >= 0 && col < BOARD_SIZE &&
+         heights[row][col] > layer &&
+         board[row][col][layer].tileId === id;
+}
+
 export default function StackedBoard({
   board, heights, preview, inspectedCell, onHoverCell, onClickCell,
 }) {
@@ -102,6 +111,30 @@ export default function StackedBoard({
     return items;
   }, [board, heights]);
 
+  // Perimeter outlines grouped by layer so they can be interleaved with tile rendering
+  const outlinesByLayer = useMemo(() => {
+    const byLayer = {};
+    for (let row = 0; row < BOARD_SIZE; row++) {
+      for (let col = 0; col < BOARD_SIZE; col++) {
+        const h = heights[row][col];
+        for (let layer = 0; layer < h; layer++) {
+          const { tileId } = board[row][col][layer];
+          const x = tx(col, layer), y = ty(row, layer);
+          const segs = [];
+          if (!sameId(board, heights, row,   col-1, layer, tileId)) segs.push([x,    y,    x,    y+CH]);
+          if (!sameId(board, heights, row,   col+1, layer, tileId)) segs.push([x+CW, y,    x+CW, y+CH]);
+          if (!sameId(board, heights, row-1, col,   layer, tileId)) segs.push([x,    y,    x+CW, y   ]);
+          if (!sameId(board, heights, row+1, col,   layer, tileId)) segs.push([x,    y+CH, x+CW, y+CH]);
+          if (segs.length) {
+            if (!byLayer[layer]) byLayer[layer] = [];
+            byLayer[layer].push(...segs);
+          }
+        }
+      }
+    }
+    return byLayer;
+  }, [board, heights]);
+
   return (
     <svg
       width={SVG_W}
@@ -112,30 +145,49 @@ export default function StackedBoard({
       onMouseLeave={() => onHoverCell(null)}
     >
       {/* ── Visual tiles (no pointer events — hit targets are separate) ── */}
-      {elements.map((el) => {
-        const x = tx(el.col, el.layer);
-        const y = ty(el.row, el.layer);
-        const key = `${el.kind}-${el.row}-${el.col}-${el.layer}`;
+      {(() => {
+        // Render tiles and their outlines interleaved by layer so outlines
+        // from layer N don't bleed through tiles at layer N+1.
+        const rendered = [];
+        let prevLayer = null;
+        elements.forEach((el) => {
+          // After finishing a tile layer, inject its outlines before the next layer starts
+          if (el.kind === 'tile' && prevLayer !== null && el.layer !== prevLayer) {
+            (outlinesByLayer[prevLayer] ?? []).forEach(([x1,y1,x2,y2], i) => {
+              rendered.push(<line key={`ol-${prevLayer}-${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke="rgba(0,0,0,0.5)" strokeWidth={1.5} pointerEvents="none" />);
+            });
+          }
 
-        if (el.kind === 'ground') {
-          return (
-            <rect key={key} x={gx(el.col)} y={gy(el.row)} width={CW} height={CH}
-              fill={GROUND_FILL} stroke={GROUND_STROKE} strokeWidth={1}
-              pointerEvents="none" />
-          );
-        }
+          const x = tx(el.col, el.layer);
+          const y = ty(el.row, el.layer);
+          const key = `${el.kind}-${el.row}-${el.col}-${el.layer}`;
 
-        const { fill, edge } = tileColor(el.color, el.layer);
-        return (
-          <g key={key} pointerEvents="none">
-            {/* side faces visible below this tile */}
-            <LeftFace   x={x} y={y} color={edge} />
-            <BottomFace x={x} y={y} color={edge} />
-            {/* main face */}
-            <rect x={x} y={y} width={CW} height={CH} fill={fill} stroke="rgba(0,0,0,0.15)" strokeWidth={0.75} />
-          </g>
-        );
-      })}
+          if (el.kind === 'ground') {
+            rendered.push(
+              <rect key={key} x={gx(el.col)} y={gy(el.row)} width={CW} height={CH}
+                fill={GROUND_FILL} stroke={GROUND_STROKE} strokeWidth={1}
+                pointerEvents="none" />
+            );
+          } else {
+            const { fill, edge } = tileColor(el.color, el.layer);
+            rendered.push(
+              <g key={key} pointerEvents="none">
+                <LeftFace   x={x} y={y} color={edge} />
+                <BottomFace x={x} y={y} color={edge} />
+                <rect x={x} y={y} width={CW} height={CH} fill={fill} />
+              </g>
+            );
+            prevLayer = el.layer;
+          }
+        });
+        // Flush outlines for the last tile layer
+        (outlinesByLayer[prevLayer] ?? []).forEach(([x1,y1,x2,y2], i) => {
+          rendered.push(<line key={`ol-${prevLayer}-last-${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="rgba(0,0,0,0.5)" strokeWidth={1.5} pointerEvents="none" />);
+        });
+        return rendered;
+      })()}
 
       {/* ── Preview ghost tiles ── */}
       {preview?.cells.map(([row, col]) => {
