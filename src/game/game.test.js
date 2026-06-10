@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ringWindow } from './game';
+import { ringWindow, ringWindowBackward } from './game';
 
 describe('ringWindow', () => {
   it('returns the next N non-empty slots clockwise from the token', () => {
@@ -53,5 +53,38 @@ describe('ringWindow', () => {
   it('returns an empty array once the ring is fully consumed', () => {
     const ring = [null, null, null];
     expect(ringWindow(ring, 0, 3)).toEqual([]);
+  });
+});
+
+describe('ringWindowBackward', () => {
+  const ring = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+  it('returns nothing before any slot has been seen', () => {
+    const seen = [false, false, false, false, false, false];
+    expect(ringWindowBackward(ring, seen, -1, 3)).toEqual([]);
+  });
+
+  it('returns seen-but-unpicked slots behind the token, farthest first', () => {
+    // Token jumped to slot 1 ('b' was picked); 'a' was offered but skipped,
+    // and slots beyond it have never been part of a window.
+    const ring2 = [...ring];
+    ring2[1] = null;
+    const seen = [true, true, false, false, false, false];
+    expect(ringWindowBackward(ring2, seen, 1, 3)).toEqual([{ tile: 'a', ringIndex: 0 }]);
+  });
+
+  it('skips over already-taken slots to find earlier skipped tiles', () => {
+    // Slots 1 and 2 were taken; 'a' (slot 0) was seen but skipped earlier.
+    const ring2 = [...ring];
+    ring2[1] = null;
+    ring2[2] = null;
+    const seen = [true, true, true, false, false, false];
+    expect(ringWindowBackward(ring2, seen, 2, 3)).toEqual([{ tile: 'a', ringIndex: 0 }]);
+  });
+
+  it('stops at the first slot that was never part of an offer/preview window', () => {
+    const seen = [false, true, true, false, false, false];
+    // Token at slot 2; slot 1 is seen, slot 0 is not — stop there.
+    expect(ringWindowBackward(ring, seen, 2, 3)).toEqual([{ tile: 'b', ringIndex: 1 }]);
   });
 });

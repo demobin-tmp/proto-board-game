@@ -13,6 +13,10 @@ import { absoluteCells, validatePlacement, scoreForPlacement } from './rules';
 export const OFFER_SIZE = 3;
 export const PREVIEW_SIZE = 3;
 
+// How many previously-seen, not-yet-taken tiles to show "behind" the token
+// (i.e. tiles that were offered/previewed earlier but skipped).
+export const SKIP_SIZE = 3;
+
 // Seat '0' always plays red, seat '1' always plays blue.
 export const PLAYER_COLORS = { '0': 'red', '1': 'blue' };
 
@@ -38,16 +42,48 @@ export function ringWindow(ring, tokenIndex, count) {
   return entries;
 }
 
+// Returns up to `count` { tile, ringIndex } entries for tiles sitting just
+// behind the token that were part of an earlier offer/preview window but
+// never picked. Already-taken slots are skipped over; the walk stops at the
+// first remaining slot that was never shown, since everything further back
+// is then guaranteed unseen too. Ordered farthest-from-token first, so it
+// reads left-to-right toward the token like the forward window does.
+export function ringWindowBackward(ring, seen, tokenIndex, count) {
+  const entries = [];
+  const n = ring.length;
+  for (let step = 1; step <= n && entries.length < count; step++) {
+    const idx = (((tokenIndex - step) % n) + n) % n;
+    if (!ring[idx]) continue;
+    if (!seen[idx]) break;
+    entries.push({ tile: ring[idx], ringIndex: idx });
+  }
+  return entries.reverse();
+}
+
+// Marks every slot in the current offer+preview window as seen, so it can
+// later be recognised as "skipped" if it isn't picked.
+function markSeen(G) {
+  for (const { ringIndex } of ringWindow(G.ring, G.tokenIndex, OFFER_SIZE + PREVIEW_SIZE)) {
+    G.seen[ringIndex] = true;
+  }
+}
+
 export const StackingGame = {
   name: 'stacking-tiles',
 
-  setup: ({ random }) => ({
-    board: emptyBoard(),
-    heights: emptyHeights(),
-    scores: { red: 0, blue: 0 },
-    ring: random.Shuffle(buildTileSupply()),
-    tokenIndex: -1,
-  }),
+  setup: ({ random }) => {
+    const ring = random.Shuffle(buildTileSupply());
+    const G = {
+      board: emptyBoard(),
+      heights: emptyHeights(),
+      scores: { red: 0, blue: 0 },
+      ring,
+      tokenIndex: -1,
+      seen: new Array(ring.length).fill(false),
+    };
+    markSeen(G);
+    return G;
+  },
 
   moves: {
     placeShape: ({ G, ctx, events }, offerIndex, rotationIndex, row, col) => {
@@ -78,6 +114,7 @@ export const StackingGame = {
 
       G.ring[entry.ringIndex] = null;
       G.tokenIndex = entry.ringIndex;
+      markSeen(G);
 
       events.endTurn();
     },

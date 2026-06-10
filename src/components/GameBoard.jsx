@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
 import StackedBoard from './StackedBoard';
-import ShapeOffer from './ShapeOffer';
-import UpcomingShapes from './UpcomingShapes';
+import TileTrack from './TileTrack';
 import ScorePanel from './ScorePanel';
 import { absoluteCells, validatePlacement } from '../game/rules';
 import { getShape } from '../game/shapes';
-import { PLAYER_COLORS, OFFER_SIZE, PREVIEW_SIZE, ringWindow } from '../game/game';
+import { PLAYER_COLORS, OFFER_SIZE, PREVIEW_SIZE, SKIP_SIZE, ringWindow, ringWindowBackward } from '../game/game';
 
 // This is the `board` component handed to boardgame.io's Client. It receives
 // the synced game state (G, ctx) plus a `moves` object whose calls are sent to
@@ -24,6 +23,10 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   );
   const offer = useMemo(() => ringEntries.slice(0, OFFER_SIZE).map((entry) => entry.tile), [ringEntries]);
   const upcoming = useMemo(() => ringEntries.slice(OFFER_SIZE).map((entry) => entry.tile), [ringEntries]);
+  const skipped = useMemo(
+    () => ringWindowBackward(G.ring, G.seen, G.tokenIndex, SKIP_SIZE).map((entry) => entry.tile),
+    [G.ring, G.seen, G.tokenIndex]
+  );
 
   const selectedTile = selectedOfferIndex != null ? offer[selectedOfferIndex] : null;
   const rotations = selectedTile ? getShape(selectedTile.shapeId).rotations : null;
@@ -79,8 +82,10 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         />
       </div>
 
-      <ShapeOffer
+      <TileTrack
+        skipped={skipped}
         offer={offer}
+        upcoming={upcoming}
         currentColor={currentColor}
         isActive={isActive}
         selectedIndex={selectedOfferIndex}
@@ -88,8 +93,6 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         onSelect={selectOffer}
         onRotate={rotateSelection}
       />
-
-      <UpcomingShapes tiles={upcoming} />
     </div>
   );
 }
