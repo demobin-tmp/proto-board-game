@@ -1,9 +1,11 @@
 import { getShape, BOARD_SIZE } from './shapes';
 
 // Translates a shape's rotation (relative offsets) into absolute board
-// coordinates anchored at (row, col).
-export function absoluteCells(shapeId, rotationIndex, row, col) {
-  const rotation = getShape(shapeId).rotations[rotationIndex];
+// coordinates anchored at (row, col). `mirrored` selects the flip side of
+// the physical tile (see shapes.js's `mirroredRotations`).
+export function absoluteCells(shapeId, rotationIndex, row, col, mirrored = false) {
+  const shape = getShape(shapeId);
+  const rotation = (mirrored ? shape.mirroredRotations : shape.rotations)[rotationIndex];
   return rotation.map(([dr, dc]) => [row + dr, col + dc]);
 }
 

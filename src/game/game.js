@@ -86,17 +86,21 @@ export const StackingGame = {
   },
 
   moves: {
-    placeShape: ({ G, ctx, events }, offerIndex, rotationIndex, row, col) => {
+    placeShape: ({ G, ctx, events }, offerIndex, rotationIndex, row, col, flipped) => {
       const offer = ringWindow(G.ring, G.tokenIndex, OFFER_SIZE);
       const entry = offer[offerIndex];
       if (!entry) return INVALID_MOVE;
       const tile = entry.tile;
 
-      const shape = getShape(tile.shapeId);
-      if (!shape.rotations[rotationIndex]) return INVALID_MOVE;
-
       const placerColor = PLAYER_COLORS[ctx.currentPlayer];
-      const cells = absoluteCells(tile.shapeId, rotationIndex, row, col);
+      // Every tile is a physical piece with two sides showing mirror-image
+      // shapes; the player picks which side is face-up via `flipped`.
+      const mirrored = !!flipped;
+      const shape = getShape(tile.shapeId);
+      const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
+      if (!rotations[rotationIndex]) return INVALID_MOVE;
+
+      const cells = absoluteCells(tile.shapeId, rotationIndex, row, col, mirrored);
       const result = validatePlacement(G.board, G.heights, cells, tile.kind, placerColor);
       if (!result.legal) return INVALID_MOVE;
 

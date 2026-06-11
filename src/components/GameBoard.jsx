@@ -12,6 +12,7 @@ import { PLAYER_COLORS, OFFER_SIZE, PREVIEW_SIZE, SKIP_SIZE, ringWindow, ringWin
 export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const [selectedOfferIndex, setSelectedOfferIndex] = useState(null);
   const [rotationIndex, setRotationIndex] = useState(0);
+  const [flipped, setFlipped] = useState(false);
   const [hoveredCell, setHoveredCell] = useState(null);
 
   const myColor = PLAYER_COLORS[playerID];
@@ -29,20 +30,31 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   );
 
   const selectedTile = selectedOfferIndex != null ? offer[selectedOfferIndex] : null;
-  const rotations = selectedTile ? getShape(selectedTile.shapeId).rotations : null;
+  const rotations = selectedTile
+    ? (flipped ? getShape(selectedTile.shapeId).mirroredRotations : getShape(selectedTile.shapeId).rotations)
+    : null;
   const activeRotation = rotations ? rotationIndex % rotations.length : 0;
 
   const preview = useMemo(() => {
     if (!selectedTile || !hoveredCell || !isActive) return null;
-    const cells = absoluteCells(selectedTile.shapeId, activeRotation, hoveredCell.row, hoveredCell.col);
+    const cells = absoluteCells(selectedTile.shapeId, activeRotation, hoveredCell.row, hoveredCell.col, flipped);
     const legal = validatePlacement(G.board, G.heights, cells, selectedTile.kind, currentColor).legal;
     return { cells, legal };
-  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, currentColor]);
+  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, currentColor, flipped]);
+
+  // Colored tiles default to the side matching the placing player's color;
+  // grey tiles default to the canonical side, but can still be flipped
+  // manually either way.
+  function defaultFlip(tile) {
+    return tile?.kind === 'color' && currentColor === 'blue';
+  }
 
   function selectOffer(index) {
     if (!isActive) return;
-    setSelectedOfferIndex((current) => (current === index ? null : index));
+    const next = selectedOfferIndex === index ? null : index;
+    setSelectedOfferIndex(next);
     setRotationIndex(0);
+    setFlipped(next != null ? defaultFlip(offer[next]) : false);
     setHoveredCell(null);
   }
 
@@ -51,11 +63,17 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     setRotationIndex((index) => (index + 1) % rotations.length);
   }
 
+  function flipSelection() {
+    if (!selectedTile) return;
+    setFlipped((current) => !current);
+  }
+
   function clickCell(row, col) {
     if (!isActive || selectedOfferIndex == null || !preview?.legal) return;
-    moves.placeShape(selectedOfferIndex, activeRotation, row, col);
+    moves.placeShape(selectedOfferIndex, activeRotation, row, col, flipped);
     setSelectedOfferIndex(null);
     setRotationIndex(0);
+    setFlipped(false);
     setHoveredCell(null);
   }
 
@@ -90,8 +108,10 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         isActive={isActive}
         selectedIndex={selectedOfferIndex}
         rotationIndex={activeRotation}
+        flipped={flipped}
         onSelect={selectOffer}
         onRotate={rotateSelection}
+        onFlip={flipSelection}
       />
     </div>
   );

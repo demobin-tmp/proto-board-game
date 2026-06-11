@@ -14,6 +14,15 @@ describe('absoluteCells', () => {
   it('translates a shape rotation to board coordinates anchored at (row, col)', () => {
     expect(absoluteCells('domino', 0, 2, 3)).toEqual([[2, 3], [2, 4]]);
   });
+
+  it('uses the mirrored orientation set for chiral shapes when mirrored is true', () => {
+    expect(absoluteCells('tetromino-l', 0, 0, 0, false)).toEqual([[0, 0], [1, 0], [2, 0], [2, 1]]);
+    expect(absoluteCells('tetromino-l', 0, 0, 0, true)).toEqual([[0, 1], [1, 1], [2, 0], [2, 1]]);
+  });
+
+  it('leaves achiral shapes unchanged when mirrored', () => {
+    expect(absoluteCells('domino', 0, 2, 3, true)).toEqual([[2, 3], [2, 4]]);
+  });
 });
 
 describe('validatePlacement', () => {

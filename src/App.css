@@ -276,10 +276,27 @@
   border: 1px solid rgba(43, 42, 38, 0.15);
 }
 
-.rotate-button {
+.tile-controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
   margin-top: 0.6rem;
+}
+
+.rotate-button,
+.flip-button {
   padding: 0.4rem 0.9rem;
   border: 1px solid #2b2a26;
   border-radius: 6px;
   background: #fff;
+}
+
+.auto-flip-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: #6b6357;
 }

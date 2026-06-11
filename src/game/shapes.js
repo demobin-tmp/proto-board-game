@@ -27,6 +27,10 @@ function rotateClockwise(cells) {
   return normalize(cells.map(([row, col]) => [col, -row]));
 }
 
+function mirrorHorizontal(cells) {
+  return normalize(cells.map(([row, col]) => [row, -col]));
+}
+
 function cellsKey(cells) {
   return cells.map(([row, col]) => `${row},${col}`).join(';');
 }
@@ -51,7 +55,16 @@ function uniqueRotations(cells) {
 const SHAPES_BY_ID = Object.fromEntries(
   BASE_SHAPES.map((shape) => [
     shape.id,
-    { id: shape.id, size: shape.cells.length, rotations: uniqueRotations(shape.cells) },
+    {
+      id: shape.id,
+      size: shape.cells.length,
+      rotations: uniqueRotations(shape.cells),
+      // The flip side of a physical tile shows its mirror image. For shapes
+      // with a line of symmetry this is identical to `rotations`; for
+      // chiral shapes (e.g. the L/S tetrominoes) it's the distinct
+      // left-/right-handed counterpart.
+      mirroredRotations: uniqueRotations(mirrorHorizontal(shape.cells)),
+    },
   ])
 );
 

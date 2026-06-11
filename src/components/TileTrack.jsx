@@ -38,10 +38,13 @@ export default function TileTrack({
   isActive,
   selectedIndex,
   rotationIndex,
+  flipped,
   onSelect,
   onRotate,
+  onFlip,
 }) {
   const skipSlots = [...Array(SKIP_SIZE - skipped.length).fill(null), ...skipped];
+  const selectedTile = selectedIndex != null ? offer[selectedIndex] : null;
 
   return (
     <div className="tile-track">
@@ -63,7 +66,12 @@ export default function TileTrack({
         {offer.map((tile, index) => {
           const shape = getShape(tile.shapeId);
           const isSelected = index === selectedIndex;
-          const rotation = shape.rotations[isSelected ? rotationIndex % shape.rotations.length : 0];
+          // Colored tiles default to the mirror image on the blue side of
+          // the piece; the selected tile reflects whatever side the player
+          // has flipped it to.
+          const mirrored = isSelected ? flipped : tile.kind === 'color' && currentColor === 'blue';
+          const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
+          const rotation = rotations[isSelected ? rotationIndex % rotations.length : 0];
           const color = tile.kind === 'grey' ? COLOR_HEX.grey : COLOR_HEX[currentColor];
 
           return (
@@ -85,10 +93,24 @@ export default function TileTrack({
         ))}
       </div>
       {selectedIndex != null && (
-        <button type="button" className="rotate-button" onClick={onRotate}>
-          Rotate ↻
-        </button>
+        <div className="tile-controls">
+          <button type="button" className="rotate-button" onClick={onRotate}>
+            Rotate ↻
+          </button>
+          {/* Flipping a colored tile would change its shape but not its
+              color, which doesn't match a real flip — only grey tiles
+              (same on both sides) can be flipped. */}
+          {selectedTile.kind === 'grey' && (
+            <button type="button" className="flip-button" onClick={onFlip}>
+              Flip ⇄
+            </button>
+          )}
+        </div>
       )}
+      <label className="auto-flip-toggle">
+        <input type="checkbox" checked disabled />
+        Auto-flip colored tiles to my color
+      </label>
     </div>
   );
 }
