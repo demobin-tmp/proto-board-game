@@ -13,6 +13,8 @@ const BASE_SHAPES = [
   { id: 'tetromino-t', cells: [[0, 0], [0, 1], [0, 2], [1, 1]], colorCount: 2, greyCount: 1 },
   { id: 'tetromino-s', cells: [[0, 1], [0, 2], [1, 0], [1, 1]], colorCount: 2, greyCount: 1 },
   { id: 'tetromino-l', cells: [[0, 0], [1, 0], [2, 0], [2, 1]], colorCount: 2, greyCount: 1 },
+  { id: 'tetromino-i', cells: [[0, 0], [0, 1], [0, 2], [0, 3]], colorCount: 2, greyCount: 1 },
+  { id: 'pentomino-t', cells: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 1]], colorCount: 2, greyCount: 1 },
 ];
 
 function normalize(cells) {
