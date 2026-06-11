@@ -61,3 +61,28 @@ export function validatePlacement(board, heights, cells, kind, placerColor) {
 export function scoreForPlacement(cellCount, landingHeight) {
   return cellCount * (landingHeight + 1);
 }
+
+// A "drop" placement: discard the offered tile and place a 1x1 filler
+// instead, for turns where no real placement is possible. A single cell
+// always rests flat, so the multi-cell "≥2 distinct tiles" stacking rule
+// doesn't apply — but a filler can never be stacked on top of another
+// filler, since that would let a player "pass" forever on the same spot.
+export function validateFillerPlacement(board, heights, row, col, kind, placerColor) {
+  if (!inBounds([row, col])) {
+    return { legal: false, reason: 'out-of-bounds' };
+  }
+
+  const landingHeight = heights[row][col];
+  if (landingHeight > 0 && board[row][col][landingHeight - 1].filler) {
+    return { legal: false, reason: 'cannot-stack-on-filler' };
+  }
+
+  if (kind === 'color') {
+    const color = topColor(board, row, col);
+    if (color !== null && color !== placerColor && color !== 'grey') {
+      return { legal: false, reason: 'color-mismatch' };
+    }
+  }
+
+  return { legal: true, landingHeight };
+}

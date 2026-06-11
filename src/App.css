@@ -284,7 +284,8 @@
 }
 
 .rotate-button,
-.flip-button {
+.flip-button,
+.filler-button {
   padding: 0.4rem 0.9rem;
   border: 1px solid #2b2a26;
   border-radius: 6px;

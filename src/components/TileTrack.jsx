@@ -3,13 +3,18 @@ import { COLOR_HEX } from './colors';
 import MiniShape from './MiniShape';
 import { SKIP_SIZE } from '../game/game';
 
+// A 1x1 filler used to drop the selected tile and place this instead, for
+// turns where none of the offer's actual shapes can legally go anywhere.
+const FILLER_CELL = [[0, 0]];
+
 // Color-kind tiles haven't been claimed by a player yet, so anything that
 // isn't the live offer (skipped / upcoming) shows in a neutral tone.
 function previewColor(tile) {
   return tile.kind === 'grey' ? COLOR_HEX.grey : COLOR_HEX.neutral;
 }
 
-function tileMeta(tile, shape) {
+function tileMeta(tile, shape, useFiller) {
+  if (useFiller) return '1 cell · dropped for a 1×1';
   return `${shape.size} cell${shape.size > 1 ? 's' : ''} · ${tile.kind === 'grey' ? 'grey' : 'colored'}`;
 }
 
@@ -39,9 +44,11 @@ export default function TileTrack({
   selectedIndex,
   rotationIndex,
   flipped,
+  useFiller,
   onSelect,
   onRotate,
   onFlip,
+  onToggleFiller,
 }) {
   const skipSlots = [...Array(SKIP_SIZE - skipped.length).fill(null), ...skipped];
   const selectedTile = selectedIndex != null ? offer[selectedIndex] : null;
@@ -71,8 +78,8 @@ export default function TileTrack({
           // has flipped it to.
           const mirrored = isSelected ? flipped : tile.kind === 'color' && currentColor === 'blue';
           const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
-          const rotation = rotations[isSelected ? rotationIndex % rotations.length : 0];
-          const color = tile.kind === 'grey' ? COLOR_HEX.grey : COLOR_HEX[currentColor];
+          const rotation = isSelected && useFiller ? FILLER_CELL : rotations[isSelected ? rotationIndex % rotations.length : 0];
+          const color = isSelected && useFiller ? COLOR_HEX[currentColor] : tile.kind === 'grey' ? COLOR_HEX.grey : COLOR_HEX[currentColor];
 
           return (
             <button
@@ -83,7 +90,7 @@ export default function TileTrack({
               disabled={!isActive}
             >
               <MiniShape cells={rotation} color={color} />
-              <span className="tile-meta">{tileMeta(tile, shape)}</span>
+              <span className="tile-meta">{tileMeta(tile, shape, isSelected && useFiller)}</span>
             </button>
           );
         })}
@@ -94,17 +101,22 @@ export default function TileTrack({
       </div>
       {selectedIndex != null && (
         <div className="tile-controls">
-          <button type="button" className="rotate-button" onClick={onRotate}>
-            Rotate ↻
-          </button>
+          {!useFiller && (
+            <button type="button" className="rotate-button" onClick={onRotate}>
+              Rotate ↻
+            </button>
+          )}
           {/* Flipping a colored tile would change its shape but not its
               color, which doesn't match a real flip — only grey tiles
               (same on both sides) can be flipped. */}
-          {selectedTile.kind === 'grey' && (
+          {!useFiller && selectedTile.kind === 'grey' && (
             <button type="button" className="flip-button" onClick={onFlip}>
               Flip ⇄
             </button>
           )}
+          <button type="button" className="filler-button" onClick={onToggleFiller}>
+            {useFiller ? 'Place full shape' : 'Place 1×1 instead'}
+          </button>
         </div>
       )}
       <label className="auto-flip-toggle">

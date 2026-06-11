@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import StackedBoard from './StackedBoard';
 import TileTrack from './TileTrack';
 import ScorePanel from './ScorePanel';
-import { absoluteCells, validatePlacement } from '../game/rules';
+import { absoluteCells, validatePlacement, validateFillerPlacement } from '../game/rules';
 import { getShape } from '../game/shapes';
 import { PLAYER_COLORS, OFFER_SIZE, PREVIEW_SIZE, SKIP_SIZE, ringWindow, ringWindowBackward } from '../game/game';
 
@@ -13,6 +13,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const [selectedOfferIndex, setSelectedOfferIndex] = useState(null);
   const [rotationIndex, setRotationIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [useFiller, setUseFiller] = useState(false);
   const [hoveredCell, setHoveredCell] = useState(null);
 
   const myColor = PLAYER_COLORS[playerID];
@@ -37,10 +38,15 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
 
   const preview = useMemo(() => {
     if (!selectedTile || !hoveredCell || !isActive) return null;
+    if (useFiller) {
+      const cells = [[hoveredCell.row, hoveredCell.col]];
+      const legal = validateFillerPlacement(G.board, G.heights, hoveredCell.row, hoveredCell.col, 'color', currentColor).legal;
+      return { cells, legal };
+    }
     const cells = absoluteCells(selectedTile.shapeId, activeRotation, hoveredCell.row, hoveredCell.col, flipped);
     const legal = validatePlacement(G.board, G.heights, cells, selectedTile.kind, currentColor).legal;
     return { cells, legal };
-  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, currentColor, flipped]);
+  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, currentColor, flipped, useFiller]);
 
   // Colored tiles default to the side matching the placing player's color;
   // grey tiles default to the canonical side, but can still be flipped
@@ -55,6 +61,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     setSelectedOfferIndex(next);
     setRotationIndex(0);
     setFlipped(next != null ? defaultFlip(offer[next]) : false);
+    setUseFiller(false);
     setHoveredCell(null);
   }
 
@@ -68,12 +75,18 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     setFlipped((current) => !current);
   }
 
+  function toggleFiller() {
+    if (!selectedTile) return;
+    setUseFiller((current) => !current);
+  }
+
   function clickCell(row, col) {
     if (!isActive || selectedOfferIndex == null || !preview?.legal) return;
-    moves.placeShape(selectedOfferIndex, activeRotation, row, col, flipped);
+    moves.placeShape(selectedOfferIndex, activeRotation, row, col, flipped, useFiller);
     setSelectedOfferIndex(null);
     setRotationIndex(0);
     setFlipped(false);
+    setUseFiller(false);
     setHoveredCell(null);
   }
 
@@ -109,9 +122,11 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         selectedIndex={selectedOfferIndex}
         rotationIndex={activeRotation}
         flipped={flipped}
+        useFiller={useFiller}
         onSelect={selectOffer}
         onRotate={rotateSelection}
         onFlip={flipSelection}
+        onToggleFiller={toggleFiller}
       />
     </div>
   );

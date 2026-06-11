@@ -2,7 +2,7 @@
 // loaded both by the Vite-bundled client and the tsx-run server.
 import { INVALID_MOVE } from 'boardgame.io/dist/cjs/core.js';
 import { BOARD_SIZE, buildTileSupply, getShape } from './shapes';
-import { absoluteCells, validatePlacement, scoreForPlacement } from './rules';
+import { absoluteCells, validatePlacement, validateFillerPlacement, scoreForPlacement } from './rules';
 
 // Patchwork-style ring: every tile in the supply gets a fixed slot in a
 // circle. A neutral token marks a slot; the offer is the next OFFER_SIZE
@@ -86,33 +86,44 @@ export const StackingGame = {
   },
 
   moves: {
-    placeShape: ({ G, ctx, events }, offerIndex, rotationIndex, row, col, flipped) => {
+    placeShape: ({ G, ctx, events }, offerIndex, rotationIndex, row, col, flipped, useFiller) => {
       const offer = ringWindow(G.ring, G.tokenIndex, OFFER_SIZE);
       const entry = offer[offerIndex];
       if (!entry) return INVALID_MOVE;
       const tile = entry.tile;
 
       const placerColor = PLAYER_COLORS[ctx.currentPlayer];
-      // Every tile is a physical piece with two sides showing mirror-image
-      // shapes; the player picks which side is face-up via `flipped`.
-      const mirrored = !!flipped;
-      const shape = getShape(tile.shapeId);
-      const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
-      if (!rotations[rotationIndex]) return INVALID_MOVE;
 
-      const cells = absoluteCells(tile.shapeId, rotationIndex, row, col, mirrored);
-      const result = validatePlacement(G.board, G.heights, cells, tile.kind, placerColor);
+      let cells;
+      let result;
+      if (useFiller) {
+        // Drop the offered tile and place a 1x1 filler instead — for turns
+        // where none of the offered shapes can legally go anywhere. The
+        // filler always counts as a colored tile, regardless of the
+        // dropped tile's kind.
+        cells = [[row, col]];
+        result = validateFillerPlacement(G.board, G.heights, row, col, 'color', placerColor);
+      } else {
+        // Every tile is a physical piece with two sides showing mirror-image
+        // shapes; the player picks which side is face-up via `flipped`.
+        const mirrored = !!flipped;
+        const shape = getShape(tile.shapeId);
+        const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
+        if (!rotations[rotationIndex]) return INVALID_MOVE;
+        cells = absoluteCells(tile.shapeId, rotationIndex, row, col, mirrored);
+        result = validatePlacement(G.board, G.heights, cells, tile.kind, placerColor);
+      }
       if (!result.legal) return INVALID_MOVE;
 
-      const tileColor = tile.kind === 'grey' ? 'grey' : placerColor;
+      const tileColor = useFiller || tile.kind !== 'grey' ? placerColor : 'grey';
       for (const [r, c] of cells) {
-        G.board[r][c].push({ color: tileColor, tileId: tile.tileId });
+        G.board[r][c].push({ color: tileColor, tileId: tile.tileId, filler: !!useFiller });
         G.heights[r][c] += 1;
       }
 
       // Only colored tiles score — grey tiles have no "respected color" to
-      // credit. Revisit this once the scoring rules are nailed down.
-      if (tile.kind === 'color') {
+      // credit. Filler placements are always colored, so they score too.
+      if (useFiller || tile.kind === 'color') {
         G.scores[placerColor] += scoreForPlacement(cells.length, result.landingHeight);
       }
 

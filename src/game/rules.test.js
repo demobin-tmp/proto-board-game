@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { absoluteCells, validatePlacement, scoreForPlacement } from './rules';
+import { absoluteCells, validatePlacement, validateFillerPlacement, scoreForPlacement } from './rules';
 import { BOARD_SIZE } from './shapes';
 
 function emptyBoard() {
@@ -94,6 +94,61 @@ describe('validatePlacement', () => {
 
     const result = validatePlacement(board, heights, [[0, 0], [0, 1]], 'grey', 'red');
     expect(result.legal).toBe(true);
+  });
+});
+
+describe('validateFillerPlacement', () => {
+  it('rejects placements that fall off the board', () => {
+    const result = validateFillerPlacement(emptyBoard(), emptyHeights(), 0, BOARD_SIZE, 'color', 'red');
+    expect(result).toEqual({ legal: false, reason: 'out-of-bounds' });
+  });
+
+  it('allows placing on empty ground', () => {
+    expect(validateFillerPlacement(emptyBoard(), emptyHeights(), 0, 0, 'color', 'red')).toEqual({
+      legal: true,
+      landingHeight: 0,
+    });
+  });
+
+  it('skips the 2-distinct-tiles rule, unlike a normal placement', () => {
+    const board = emptyBoard();
+    const heights = emptyHeights();
+    board[0][0].push({ color: 'red', tileId: 'a' });
+    heights[0][0] = 1;
+
+    expect(validateFillerPlacement(board, heights, 0, 0, 'color', 'red').legal).toBe(true);
+  });
+
+  it('lets a colored filler stack on its own color or grey, but not the opponent color', () => {
+    const board = emptyBoard();
+    const heights = emptyHeights();
+    board[0][0].push({ color: 'blue', tileId: 'a' });
+    board[0][1].push({ color: 'grey', tileId: 'b' });
+    heights[0][0] = 1;
+    heights[0][1] = 1;
+
+    expect(validateFillerPlacement(board, heights, 0, 0, 'color', 'red').legal).toBe(false);
+    expect(validateFillerPlacement(board, heights, 0, 0, 'color', 'blue').legal).toBe(true);
+    expect(validateFillerPlacement(board, heights, 0, 1, 'color', 'red').legal).toBe(true);
+  });
+
+  it('lets a grey filler land on any color, ignoring the matching rule', () => {
+    const board = emptyBoard();
+    const heights = emptyHeights();
+    board[0][0].push({ color: 'blue', tileId: 'a' });
+    heights[0][0] = 1;
+
+    expect(validateFillerPlacement(board, heights, 0, 0, 'grey', 'red').legal).toBe(true);
+  });
+
+  it('rejects stacking a filler on top of another filler', () => {
+    const board = emptyBoard();
+    const heights = emptyHeights();
+    board[0][0].push({ color: 'red', tileId: 'a', filler: true });
+    heights[0][0] = 1;
+
+    const result = validateFillerPlacement(board, heights, 0, 0, 'color', 'red');
+    expect(result).toEqual({ legal: false, reason: 'cannot-stack-on-filler' });
   });
 });
 
