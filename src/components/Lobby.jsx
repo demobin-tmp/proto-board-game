@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LobbyClient } from 'boardgame.io/client';
 import { GAME_NAME, SERVER_URL } from '../config';
 
@@ -10,6 +10,32 @@ export default function Lobby({ onJoined }) {
   const [seat, setSeat] = useState('0');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  // Joining an existing match: auto-pick whichever seat is still open, so
+  // the second player doesn't have to remember to choose the opposite color.
+  useEffect(() => {
+    const matchID = matchCode.trim();
+    if (!matchID) return undefined;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const match = await lobbyClient.getMatch(GAME_NAME, matchID);
+        if (cancelled) return;
+        const openSeats = match.players.filter((p) => !p.name).map((p) => String(p.id));
+        if (openSeats.length === 1) {
+          setSeat(openSeats[0]);
+        }
+      } catch {
+        // Unknown/invalid match code so far — leave the seat choice as-is.
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [matchCode]);
 
   async function handleSubmit(event) {
     event.preventDefault();
