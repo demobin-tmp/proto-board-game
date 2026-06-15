@@ -73,10 +73,9 @@ export default function TileTrack({
         {offer.map((tile, index) => {
           const shape = getShape(tile.shapeId);
           const isSelected = index === selectedIndex;
-          // Colored tiles default to the mirror image on the blue side of
-          // the piece; the selected tile reflects whatever side the player
-          // has flipped it to.
-          const mirrored = isSelected ? flipped : tile.kind === 'color' && currentColor === 'blue';
+          // Every tile renders in its defined orientation; only a selected
+          // grey tile can be flipped to its mirror side (see below).
+          const mirrored = isSelected && flipped;
           const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
           const rotation = isSelected && useFiller ? FILLER_CELL : rotations[isSelected ? rotationIndex % rotations.length : 0];
           const color = isSelected && useFiller ? COLOR_HEX[currentColor] : tile.kind === 'grey' ? COLOR_HEX.grey : COLOR_HEX[currentColor];
@@ -106,9 +105,9 @@ export default function TileTrack({
               Rotate ↻
             </button>
           )}
-          {/* Flipping a colored tile would change its shape but not its
-              color, which doesn't match a real flip — only grey tiles
-              (same on both sides) can be flipped. */}
+          {/* Colored tiles are drawn already committed to one handedness
+              (the supply has separate normal/mirrored entries for chiral
+              shapes), so only grey tiles offer a flip side. */}
           {!useFiller && selectedTile.kind === 'grey' && (
             <button type="button" className="flip-button" onClick={onFlip}>
               Flip ⇄
@@ -119,10 +118,6 @@ export default function TileTrack({
           </button>
         </div>
       )}
-      <label className="auto-flip-toggle">
-        <input type="checkbox" checked disabled />
-        Auto-flip colored tiles to my color
-      </label>
     </div>
   );
 }

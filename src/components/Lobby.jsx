@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { LobbyClient } from 'boardgame.io/client';
 import { GAME_NAME, SERVER_URL } from '../config';
+import { getShape } from '../game/shapes';
+import { COLOR_HEX } from './colors';
+import MiniShape from './MiniShape';
 
 const lobbyClient = new LobbyClient({ server: SERVER_URL });
 
@@ -10,6 +13,34 @@ export default function Lobby({ onJoined }) {
   const [seat, setSeat] = useState('0');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [profiles, setProfiles] = useState(null);
+  const [profileName, setProfileName] = useState('default');
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [customCounts, setCustomCounts] = useState(null);
+
+  // Tile-supply profiles (which shapes are in play and how many of each) are
+  // configured server-side in data/profiles.json, so they can be tweaked
+  // without a code change. Only relevant when creating a new match.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${SERVER_URL}/profiles`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setProfiles(data);
+        const name = data['default'] ? 'default' : Object.keys(data)[0];
+        if (name) {
+          setProfileName(name);
+          setCustomCounts(JSON.parse(JSON.stringify(data[name])));
+        }
+      })
+      .catch(() => {
+        // No profiles endpoint reachable — fall back to the game's built-in default.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Joining an existing match: auto-pick whichever seat is still open, so
   // the second player doesn't have to remember to choose the opposite color.
@@ -37,6 +68,14 @@ export default function Lobby({ onJoined }) {
     };
   }, [matchCode]);
 
+  function updateCount(shapeId, field, raw) {
+    const value = Math.max(0, Number.parseInt(raw, 10) || 0);
+    setCustomCounts((current) => ({
+      ...current,
+      [shapeId]: { ...current[shapeId], [field]: value },
+    }));
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setBusy(true);
@@ -44,7 +83,8 @@ export default function Lobby({ onJoined }) {
     try {
       let matchID = matchCode.trim();
       if (!matchID) {
-        const created = await lobbyClient.createMatch(GAME_NAME, { numPlayers: 2 });
+        const setupData = customCounts ? { profile: customCounts } : undefined;
+        const created = await lobbyClient.createMatch(GAME_NAME, { numPlayers: 2, setupData });
         matchID = created.matchID;
       }
       const { playerCredentials } = await lobbyClient.joinMatch(GAME_NAME, matchID, {
@@ -92,6 +132,62 @@ export default function Lobby({ onJoined }) {
           placeholder="leave blank to create a new match"
         />
       </label>
+
+      {!matchCode.trim() && profiles && (
+        <>
+          <label>
+            Profile
+            <select
+              value={profileName}
+              onChange={(event) => {
+                const name = event.target.value;
+                setProfileName(name);
+                setCustomCounts(JSON.parse(JSON.stringify(profiles[name])));
+              }}
+            >
+              {Object.keys(profiles).map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button type="button" className="edit-profile-button" onClick={() => setEditingProfile((current) => !current)}>
+            {editingProfile ? 'Hide profile' : 'Edit profile for this game'}
+          </button>
+
+          {editingProfile && customCounts && (
+            <div className="profile-editor">
+              <div className="profile-editor-header">
+                <span />
+                <span>Colored</span>
+                <span>Grey</span>
+              </div>
+              {Object.entries(customCounts).map(([shapeId, counts]) => (
+                <div className="profile-editor-row" key={shapeId}>
+                  <span className="shape-id">
+                    <MiniShape cells={getShape(shapeId).rotations[0]} color={COLOR_HEX.neutral} />
+                    {shapeId}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={counts.colorCount}
+                    onChange={(event) => updateCount(shapeId, 'colorCount', event.target.value)}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    value={counts.greyCount}
+                    onChange={(event) => updateCount(shapeId, 'greyCount', event.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       <button type="submit" disabled={busy}>
         {busy ? 'Connecting…' : matchCode.trim() ? 'Join match' : 'Create match'}

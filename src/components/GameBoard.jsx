@@ -3,8 +3,26 @@ import StackedBoard from './StackedBoard';
 import TileTrack from './TileTrack';
 import ScorePanel from './ScorePanel';
 import { absoluteCells, validatePlacement, validateFillerPlacement } from '../game/rules';
-import { getShape } from '../game/shapes';
+import { getShape, BOARD_SIZE } from '../game/shapes';
 import { PLAYER_COLORS, OFFER_SIZE, PREVIEW_SIZE, SKIP_SIZE, ringWindow, ringWindowBackward } from '../game/game';
+
+// A rotation's cells are normalized so the shape's bounding box starts at
+// (0,0), but for some rotations (chiefly mirrored ones) the hovered cell
+// itself isn't part of the shape — it sits at the empty corner of that
+// bounding box. Near the bottom/right edges that pushes every cell of the
+// shape off-board, leaving no preview at all. Clamping the anchor keeps the
+// shape's bounding box on the board, so the preview "sticks" to the edge
+// instead of vanishing.
+function clampAnchor(row, col, rotation) {
+  const maxDr = Math.max(...rotation.map(([dr]) => dr));
+  const maxDc = Math.max(...rotation.map(([, dc]) => dc));
+  return {
+    row: Math.min(row, BOARD_SIZE - 1 - maxDr),
+    col: Math.min(col, BOARD_SIZE - 1 - maxDc),
+  };
+}
+
+const FILLER_ROTATION = [[0, 0]];
 
 // This is the `board` component handed to boardgame.io's Client. It receives
 // the synced game state (G, ctx) plus a `moves` object whose calls are sent to
@@ -39,28 +57,23 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const preview = useMemo(() => {
     if (!selectedTile || !hoveredCell || !isActive) return null;
     if (useFiller) {
-      const cells = [[hoveredCell.row, hoveredCell.col]];
-      const legal = validateFillerPlacement(G.board, G.heights, hoveredCell.row, hoveredCell.col, 'color', currentColor).legal;
+      const anchor = clampAnchor(hoveredCell.row, hoveredCell.col, FILLER_ROTATION);
+      const cells = [[anchor.row, anchor.col]];
+      const legal = validateFillerPlacement(G.board, G.heights, anchor.row, anchor.col, 'color', currentColor).legal;
       return { cells, legal };
     }
-    const cells = absoluteCells(selectedTile.shapeId, activeRotation, hoveredCell.row, hoveredCell.col, flipped);
+    const anchor = clampAnchor(hoveredCell.row, hoveredCell.col, rotations[activeRotation]);
+    const cells = absoluteCells(selectedTile.shapeId, activeRotation, anchor.row, anchor.col, flipped);
     const legal = validatePlacement(G.board, G.heights, cells, selectedTile.kind, currentColor).legal;
     return { cells, legal };
-  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, currentColor, flipped, useFiller]);
-
-  // Colored tiles default to the side matching the placing player's color;
-  // grey tiles default to the canonical side, but can still be flipped
-  // manually either way.
-  function defaultFlip(tile) {
-    return tile?.kind === 'color' && currentColor === 'blue';
-  }
+  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, currentColor, flipped, useFiller, rotations]);
 
   function selectOffer(index) {
     if (!isActive) return;
     const next = selectedOfferIndex === index ? null : index;
     setSelectedOfferIndex(next);
     setRotationIndex(0);
-    setFlipped(next != null ? defaultFlip(offer[next]) : false);
+    setFlipped(false);
     setUseFiller(false);
     setHoveredCell(null);
   }
@@ -82,7 +95,9 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
 
   function clickCell(row, col) {
     if (!isActive || selectedOfferIndex == null || !preview?.legal) return;
-    moves.placeShape(selectedOfferIndex, activeRotation, row, col, flipped, useFiller);
+    const rotation = useFiller ? FILLER_ROTATION : rotations[activeRotation];
+    const anchor = clampAnchor(row, col, rotation);
+    moves.placeShape(selectedOfferIndex, activeRotation, anchor.row, anchor.col, flipped, useFiller);
     setSelectedOfferIndex(null);
     setRotationIndex(0);
     setFlipped(false);

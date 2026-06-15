@@ -12,9 +12,27 @@ const BASE_SHAPES = [
   { id: 'tetromino-o', cells: [[0, 0], [0, 1], [1, 0], [1, 1]], colorCount: 2, greyCount: 1 },
   { id: 'tetromino-t', cells: [[0, 0], [0, 1], [0, 2], [1, 1]], colorCount: 2, greyCount: 1 },
   { id: 'tetromino-s', cells: [[0, 1], [0, 2], [1, 0], [1, 1]], colorCount: 2, greyCount: 1 },
+  // Mirror image of tetromino-s. Colored tiles never flip, so chiral shapes
+  // need a separate supply entry for each handedness — grey doesn't need a
+  // second entry since a grey tile's flip side already covers it.
+  { id: 'tetromino-s-mirror', cells: [[0, 0], [0, 1], [1, 1], [1, 2]], colorCount: 2, greyCount: 0 },
   { id: 'tetromino-l', cells: [[0, 0], [1, 0], [2, 0], [2, 1]], colorCount: 2, greyCount: 1 },
+  { id: 'tetromino-l-mirror', cells: [[0, 1], [1, 1], [2, 0], [2, 1]], colorCount: 2, greyCount: 0 },
   { id: 'tetromino-i', cells: [[0, 0], [0, 1], [0, 2], [0, 3]], colorCount: 2, greyCount: 1 },
   { id: 'pentomino-t', cells: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 1]], colorCount: 2, greyCount: 1 },
+  { id: 'pentomino-t-mirror', cells: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 2]], colorCount: 2, greyCount: 0 },
+  { id: 'pentomino-i', cells: [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]], colorCount: 2, greyCount: 1 },
+  // 2x3 block missing one corner. Chiral, like the tetromino-l pair above.
+  { id: 'pentomino-p', cells: [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1]], colorCount: 2, greyCount: 1 },
+  { id: 'pentomino-p-mirror', cells: [[0, 0], [0, 1], [0, 2], [1, 1], [1, 2]], colorCount: 2, greyCount: 0 },
+  // C/U-shape: symmetric under mirroring, so no separate mirror entry needed.
+  { id: 'pentomino-u', cells: [[0, 0], [0, 2], [1, 0], [1, 1], [1, 2]], colorCount: 2, greyCount: 1 },
+  // Like tetromino-l but one cell longer. Chiral, like the tetromino-l pair above.
+  { id: 'pentomino-l', cells: [[0, 0], [1, 0], [2, 0], [3, 0], [3, 1]], colorCount: 2, greyCount: 1 },
+  { id: 'pentomino-l-mirror', cells: [[0, 1], [1, 1], [2, 1], [3, 0], [3, 1]], colorCount: 2, greyCount: 0 },
+  // Plus/cross shape. Symmetric under every rotation and mirror, so no
+  // separate mirror entry needed.
+  { id: 'pentomino-x', cells: [[0, 1], [1, 0], [1, 1], [1, 2], [2, 1]], colorCount: 2, greyCount: 1 },
 ];
 
 function normalize(cells) {
@@ -74,19 +92,31 @@ export function getShape(id) {
   return SHAPES_BY_ID[id];
 }
 
-// Builds the full tile supply for a match: every base shape contributes
-// `colorCount` tiles (which take the placing player's color) and `greyCount`
-// neutral tiles. The result is shuffled by the caller using boardgame.io's
-// seeded random so it stays in sync across clients.
-export function buildTileSupply() {
+// A profile is `{ [shapeId]: { colorCount, greyCount } }`, describing which
+// shapes are in play for a match and how many of each. DEFAULT_PROFILE
+// mirrors the counts above and is used when a match is created without an
+// explicit profile (see ../../data/profiles.json for editable profiles).
+export const DEFAULT_PROFILE = Object.fromEntries(
+  BASE_SHAPES.map((shape) => [shape.id, { colorCount: shape.colorCount, greyCount: shape.greyCount }])
+);
+
+// Builds the full tile supply for a match from a profile: each listed shape
+// contributes `colorCount` tiles (which take the placing player's color) and
+// `greyCount` neutral tiles. Unknown shape ids are ignored. The result is
+// shuffled by the caller using boardgame.io's seeded random so it stays in
+// sync across clients.
+export function buildTileSupply(profile) {
   const supply = [];
   let nextId = 0;
-  for (const shape of BASE_SHAPES) {
-    for (let i = 0; i < shape.colorCount; i++) {
-      supply.push({ tileId: `t${nextId++}`, shapeId: shape.id, kind: 'color' });
+  for (const [shapeId, counts] of Object.entries(profile)) {
+    if (!SHAPES_BY_ID[shapeId]) continue;
+    const colorCount = counts?.colorCount || 0;
+    const greyCount = counts?.greyCount || 0;
+    for (let i = 0; i < colorCount; i++) {
+      supply.push({ tileId: `t${nextId++}`, shapeId, kind: 'color' });
     }
-    for (let i = 0; i < shape.greyCount; i++) {
-      supply.push({ tileId: `t${nextId++}`, shapeId: shape.id, kind: 'grey' });
+    for (let i = 0; i < greyCount; i++) {
+      supply.push({ tileId: `t${nextId++}`, shapeId, kind: 'grey' });
     }
   }
   return supply;
