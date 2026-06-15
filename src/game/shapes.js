@@ -92,13 +92,18 @@ export function getShape(id) {
   return SHAPES_BY_ID[id];
 }
 
-// A profile is `{ [shapeId]: { colorCount, greyCount } }`, describing which
-// shapes are in play for a match and how many of each. DEFAULT_PROFILE
-// mirrors the counts above and is used when a match is created without an
-// explicit profile (see ../../data/profiles.json for editable profiles).
-export const DEFAULT_PROFILE = Object.fromEntries(
-  BASE_SHAPES.map((shape) => [shape.id, { colorCount: shape.colorCount, greyCount: shape.greyCount }])
-);
+// A profile is `{ [shapeId]: { colorCount, greyCount }, board }`, describing
+// which shapes are in play for a match, how many of each, and which board
+// layout to use ('default': neutral ground everywhere, or 'colored': the
+// ground is split red/blue). DEFAULT_PROFILE mirrors the counts above and is
+// used when a match is created without an explicit profile (see
+// ../../data/profiles.json for editable profiles).
+export const DEFAULT_PROFILE = {
+  ...Object.fromEntries(
+    BASE_SHAPES.map((shape) => [shape.id, { colorCount: shape.colorCount, greyCount: shape.greyCount }])
+  ),
+  board: 'default',
+};
 
 // Builds the full tile supply for a match from a profile: each listed shape
 // contributes `colorCount` tiles (which take the placing player's color) and

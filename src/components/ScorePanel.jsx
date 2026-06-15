@@ -1,9 +1,6 @@
 export default function ScorePanel({ scores, myColor, currentColor, gameover }) {
   function label(color) {
-    const tags = [];
-    if (color === myColor) tags.push('you');
-    if (color === currentColor && !gameover) tags.push("their turn");
-    return tags.length ? ` (${tags.join(', ')})` : '';
+    return color === myColor ? ' (you)' : '';
   }
 
   return (

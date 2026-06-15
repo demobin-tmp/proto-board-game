@@ -13,18 +13,23 @@ function inBounds([row, col]) {
   return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
 }
 
-function topColor(board, row, col) {
+// The "color" of a cell's surface: the top tile's color if it's been built
+// on, otherwise the ground's own color (null for neutral ground — see
+// `groundColors` in game.js for the "colored board" variant).
+function topColor(board, groundColors, row, col) {
   const stack = board[row][col];
-  return stack.length ? stack[stack.length - 1].color : null;
+  if (stack.length) return stack[stack.length - 1].color;
+  return groundColors ? groundColors[row][col] : null;
 }
 
 // A placement is legal when:
 //  1. every footprint cell is on the board,
 //  2. every footprint cell currently sits at the same height — the shape lands
 //     as one flat rigid layer, so it can't overhang empty space, and
-//  3. for colored tiles, every footprint cell is empty, already the placing
-//     player's color, or grey. Grey tiles ignore this rule entirely.
-export function validatePlacement(board, heights, cells, kind, placerColor) {
+//  3. for colored tiles, every footprint cell's surface (top tile, or bare
+//     ground on a colored board) is unclaimed, already the placing player's
+//     color, or grey. Grey tiles ignore this rule entirely.
+export function validatePlacement(board, heights, groundColors, cells, kind, placerColor) {
   if (!cells.every(inBounds)) {
     return { legal: false, reason: 'out-of-bounds' };
   }
@@ -44,7 +49,7 @@ export function validatePlacement(board, heights, cells, kind, placerColor) {
 
   if (kind === 'color') {
     const colorsMatch = cells.every(([row, col]) => {
-      const color = topColor(board, row, col);
+      const color = topColor(board, groundColors, row, col);
       return color === null || color === placerColor || color === 'grey';
     });
     if (!colorsMatch) {
@@ -67,7 +72,7 @@ export function scoreForPlacement(cellCount, landingHeight) {
 // always rests flat, so the multi-cell "≥2 distinct tiles" stacking rule
 // doesn't apply — but a filler can never be stacked on top of another
 // filler, since that would let a player "pass" forever on the same spot.
-export function validateFillerPlacement(board, heights, row, col, kind, placerColor) {
+export function validateFillerPlacement(board, heights, groundColors, row, col, kind, placerColor) {
   if (!inBounds([row, col])) {
     return { legal: false, reason: 'out-of-bounds' };
   }
@@ -78,7 +83,7 @@ export function validateFillerPlacement(board, heights, row, col, kind, placerCo
   }
 
   if (kind === 'color') {
-    const color = topColor(board, row, col);
+    const color = topColor(board, groundColors, row, col);
     if (color !== null && color !== placerColor && color !== 'grey') {
       return { legal: false, reason: 'color-mismatch' };
     }

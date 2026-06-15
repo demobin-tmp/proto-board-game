@@ -59,14 +59,14 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     if (useFiller) {
       const anchor = clampAnchor(hoveredCell.row, hoveredCell.col, FILLER_ROTATION);
       const cells = [[anchor.row, anchor.col]];
-      const legal = validateFillerPlacement(G.board, G.heights, anchor.row, anchor.col, 'color', currentColor).legal;
+      const legal = validateFillerPlacement(G.board, G.heights, G.groundColors, anchor.row, anchor.col, 'color', currentColor).legal;
       return { cells, legal };
     }
     const anchor = clampAnchor(hoveredCell.row, hoveredCell.col, rotations[activeRotation]);
     const cells = absoluteCells(selectedTile.shapeId, activeRotation, anchor.row, anchor.col, flipped);
-    const legal = validatePlacement(G.board, G.heights, cells, selectedTile.kind, currentColor).legal;
+    const legal = validatePlacement(G.board, G.heights, G.groundColors, cells, selectedTile.kind, currentColor).legal;
     return { cells, legal };
-  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, currentColor, flipped, useFiller, rotations]);
+  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, G.groundColors, currentColor, flipped, useFiller, rotations]);
 
   function selectOffer(index) {
     if (!isActive) return;
@@ -122,6 +122,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         <StackedBoard
           board={G.board}
           heights={G.heights}
+          groundColors={G.groundColors}
           preview={preview}
           onHoverCell={setHoveredCell}
           onClickCell={clickCell}

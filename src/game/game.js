@@ -30,6 +30,30 @@ function emptyHeights() {
   return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
 }
 
+// The "default" board is neutral ground everywhere (behaves like grey: any
+// color may build on it). The "colored" board splits the ground into a red
+// half and a blue half, and the "diagonal" board splits it into red/blue
+// triangles with a grey diagonal between them — in both cases a colored tile
+// can only be placed on bare ground of its own color or grey ground, same
+// rule that already governs stacking on top of colored tiles.
+function buildGroundColors(boardType) {
+  if (boardType === 'colored') {
+    const half = BOARD_SIZE / 2;
+    return Array.from({ length: BOARD_SIZE }, () =>
+      Array.from({ length: BOARD_SIZE }, (_, col) => (col < half ? 'red' : 'blue'))
+    );
+  }
+  if (boardType === 'diagonal') {
+    return Array.from({ length: BOARD_SIZE }, (_, row) =>
+      Array.from({ length: BOARD_SIZE }, (_, col) => {
+        if (row === col) return 'grey';
+        return row < col ? 'red' : 'blue';
+      })
+    );
+  }
+  return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(null));
+}
+
 // Returns up to `count` { tile, ringIndex } entries for the non-empty slots
 // walking clockwise from the token, in order.
 export function ringWindow(ring, tokenIndex, count) {
@@ -81,6 +105,7 @@ export const StackingGame = {
     const G = {
       board: emptyBoard(),
       heights: emptyHeights(),
+      groundColors: buildGroundColors(profile.board),
       scores: { red: 0, blue: 0 },
       ring,
       tokenIndex: -1,
@@ -107,7 +132,7 @@ export const StackingGame = {
         // filler always counts as a colored tile, regardless of the
         // dropped tile's kind.
         cells = [[row, col]];
-        result = validateFillerPlacement(G.board, G.heights, row, col, 'color', placerColor);
+        result = validateFillerPlacement(G.board, G.heights, G.groundColors, row, col, 'color', placerColor);
       } else {
         // Every tile is a physical piece with two sides showing mirror-image
         // shapes; the player picks which side is face-up via `flipped`.
@@ -116,7 +141,7 @@ export const StackingGame = {
         const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
         if (!rotations[rotationIndex]) return INVALID_MOVE;
         cells = absoluteCells(tile.shapeId, rotationIndex, row, col, mirrored);
-        result = validatePlacement(G.board, G.heights, cells, tile.kind, placerColor);
+        result = validatePlacement(G.board, G.heights, G.groundColors, cells, tile.kind, placerColor);
       }
       if (!result.legal) return INVALID_MOVE;
 

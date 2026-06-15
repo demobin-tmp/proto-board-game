@@ -76,6 +76,10 @@ export default function Lobby({ onJoined }) {
     }));
   }
 
+  function updateBoard(value) {
+    setCustomCounts((current) => ({ ...current, board: value }));
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setBusy(true);
@@ -136,7 +140,7 @@ export default function Lobby({ onJoined }) {
       {!matchCode.trim() && profiles && (
         <>
           <label>
-            Profile
+            Base settings
             <select
               value={profileName}
               onChange={(event) => {
@@ -154,36 +158,50 @@ export default function Lobby({ onJoined }) {
           </label>
 
           <button type="button" className="edit-profile-button" onClick={() => setEditingProfile((current) => !current)}>
-            {editingProfile ? 'Hide profile' : 'Edit profile for this game'}
+            {editingProfile ? 'Hide game settings' : 'Edit game'}
           </button>
 
           {editingProfile && customCounts && (
             <div className="profile-editor">
+              <label>
+                Board
+                <select
+                  value={customCounts.board || 'default'}
+                  onChange={(event) => updateBoard(event.target.value)}
+                >
+                  <option value="default">Default (neutral ground)</option>
+                  <option value="colored">Colored (red/blue halves)</option>
+                  <option value="diagonal">Diagonal (red/blue triangles, grey divider)</option>
+                </select>
+              </label>
+
               <div className="profile-editor-header">
                 <span />
                 <span>Colored</span>
                 <span>Grey</span>
               </div>
-              {Object.entries(customCounts).map(([shapeId, counts]) => (
-                <div className="profile-editor-row" key={shapeId}>
-                  <span className="shape-id">
-                    <MiniShape cells={getShape(shapeId).rotations[0]} color={COLOR_HEX.neutral} />
-                    {shapeId}
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={counts.colorCount}
-                    onChange={(event) => updateCount(shapeId, 'colorCount', event.target.value)}
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    value={counts.greyCount}
-                    onChange={(event) => updateCount(shapeId, 'greyCount', event.target.value)}
-                  />
-                </div>
-              ))}
+              {Object.entries(customCounts)
+                .filter(([shapeId]) => shapeId !== 'board')
+                .map(([shapeId, counts]) => (
+                  <div className="profile-editor-row" key={shapeId}>
+                    <span className="shape-id">
+                      <MiniShape cells={getShape(shapeId).rotations[0]} color={COLOR_HEX.neutral} />
+                      {shapeId}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={counts.colorCount}
+                      onChange={(event) => updateCount(shapeId, 'colorCount', event.target.value)}
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      value={counts.greyCount}
+                      onChange={(event) => updateCount(shapeId, 'greyCount', event.target.value)}
+                    />
+                  </div>
+                ))}
             </div>
           )}
         </>

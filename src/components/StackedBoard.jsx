@@ -51,6 +51,20 @@ function tileColor(color, layer) {
 const GROUND_FILL   = '#ece7da';
 const GROUND_STROKE = '#cfc6b0';
 
+// Tinted ground for the "colored"/"diagonal" board variants: a light wash of
+// the player's color, distinct from both neutral ground and a placed tile.
+// "grey" marks the diagonal divider on the "diagonal" board.
+const GROUND_TINT = {
+  red:  { fill: '#e8cfc9', stroke: '#d3a99e' },
+  blue: { fill: '#cfdbe8', stroke: '#a9c0d3' },
+  grey: { fill: '#dcd9d2', stroke: '#b8b4ab' },
+};
+
+function groundFill(groundColors, row, col) {
+  const tint = groundColors?.[row]?.[col];
+  return tint ? GROUND_TINT[tint] : { fill: GROUND_FILL, stroke: GROUND_STROKE };
+}
+
 // Left face: the strip visible to the left because the tile is shifted right.
 // Connects the tile's left edge to the equivalent position one layer down.
 function LeftFace({ x, y, color }) {
@@ -77,7 +91,7 @@ function sameId(board, heights, row, col, layer, id) {
 }
 
 export default function StackedBoard({
-  board, heights, preview, onHoverCell, onClickCell,
+  board, heights, groundColors, preview, onHoverCell, onClickCell,
 }) {
   const elements = useMemo(() => {
     const items = [];
@@ -164,9 +178,10 @@ export default function StackedBoard({
           const key = `${el.kind}-${el.row}-${el.col}-${el.layer}`;
 
           if (el.kind === 'ground') {
+            const { fill, stroke } = groundFill(groundColors, el.row, el.col);
             rendered.push(
               <rect key={key} x={gx(el.col)} y={gy(el.row)} width={CW} height={CH}
-                fill={GROUND_FILL} stroke={GROUND_STROKE} strokeWidth={1}
+                fill={fill} stroke={stroke} strokeWidth={1}
                 pointerEvents="none" />
             );
           } else {
