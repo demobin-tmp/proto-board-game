@@ -107,6 +107,7 @@ export const StackingGame = {
       heights: emptyHeights(),
       groundColors: buildGroundColors(profile.board),
       scores: { red: 0, blue: 0 },
+      charges: { red: 0, blue: 0 },
       ring,
       tokenIndex: -1,
       seen: new Array(ring.length).fill(false),
@@ -152,10 +153,13 @@ export const StackingGame = {
         G.heights[r][c] += 1;
       }
 
-      // Only colored tiles score — grey tiles have no "respected color" to
-      // credit. Filler placements are always colored, so they score too.
+      // Colored tiles score; grey tiles earn the placer one charge instead.
+      // Filler placements are always colored, so they score too.
       if (useFiller || tile.kind === 'color') {
         G.scores[placerColor] += scoreForPlacement(cells.length, result.landingHeight);
+      } else {
+        if (!G.charges) G.charges = { red: 0, blue: 0 };
+        G.charges[placerColor] += 1;
       }
 
       G.ring[entry.ringIndex] = null;

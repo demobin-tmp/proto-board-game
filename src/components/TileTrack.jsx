@@ -1,7 +1,6 @@
 import { getShape } from '../game/shapes';
 import { COLOR_HEX } from './colors';
 import MiniShape from './MiniShape';
-import { SKIP_SIZE } from '../game/game';
 
 // A 1x1 filler used to drop the selected tile and place this instead, for
 // turns where none of the offer's actual shapes can legally go anywhere.
@@ -27,10 +26,6 @@ function StaticTile({ tile, className, currentColor }) {
   );
 }
 
-function EmptySlot() {
-  return <div className="offer-tile empty-slot" aria-hidden="true" />;
-}
-
 // Single row showing the ring around the token: tiles previously offered
 // but skipped (left, dimmed), the current selectable offer (middle), and a
 // preview of what's coming up next (right, dimmed).
@@ -45,7 +40,6 @@ function tileRotations(tile, shape, currentColor, isSelected, flipped) {
 }
 
 export default function TileTrack({
-  skipped,
   offer,
   upcoming,
   myColor,
@@ -60,27 +54,12 @@ export default function TileTrack({
   onFlip,
   onToggleFiller,
 }) {
-  const skipSlots = [...Array(SKIP_SIZE - skipped.length).fill(null), ...skipped];
   const selectedTile = selectedIndex != null ? offer[selectedIndex] : null;
 
   return (
     <div className="tile-track">
-      <h2>{isActive ? 'Choose a shape, then click the board' : 'Available shapes'}</h2>
-      <div className="tile-row">
-        {skipSlots.map((tile, i) =>
-          tile ? (
-            <StaticTile key={tile.tileId} tile={tile} className="offer-tile skipped-tile" currentColor={currentColor} />
-          ) : (
-            <EmptySlot key={`skip-empty-${i}`} />
-          )
-        )}
-
-        <div className="token-marker" title="Token — the offer is drawn from here">
-          <span className="token-line" />
-          <span className="token-label">pick</span>
-        </div>
-
-        {offer.map((tile, index) => {
+<div className="tile-row">
+{offer.map((tile, index) => {
           const shape = getShape(tile.shapeId);
           const isSelected = index === selectedIndex;
           const rotations = tileRotations(tile, shape, currentColor, isSelected, flipped);

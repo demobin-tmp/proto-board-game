@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import StackedBoard from './StackedBoard';
 import TileTrack from './TileTrack';
 import ScorePanel from './ScorePanel';
+import RingInspector from './RingInspector';
 import { absoluteCells, validatePlacement, validateFillerPlacement } from '../game/rules';
 import { getShape, BOARD_SIZE } from '../game/shapes';
-import { PLAYER_COLORS, OFFER_SIZE, PREVIEW_SIZE, SKIP_SIZE, ringWindow, ringWindowBackward } from '../game/game';
+import { PLAYER_COLORS, OFFER_SIZE, PREVIEW_SIZE, ringWindow } from '../game/game';
 
 // A rotation's cells are normalized so the shape's bounding box starts at
 // (0,0), but for some rotations (chiefly mirrored ones) the hovered cell
@@ -43,10 +44,6 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   );
   const offer = useMemo(() => ringEntries.slice(0, OFFER_SIZE).map((entry) => entry.tile), [ringEntries]);
   const upcoming = useMemo(() => ringEntries.slice(OFFER_SIZE).map((entry) => entry.tile), [ringEntries]);
-  const skipped = useMemo(
-    () => ringWindowBackward(G.ring, G.seen, G.tokenIndex, SKIP_SIZE).map((entry) => entry.tile),
-    [G.ring, G.seen, G.tokenIndex]
-  );
 
   const selectedTile = selectedOfferIndex != null ? offer[selectedOfferIndex] : null;
   // Colored tiles are two-sided physical pieces: blue always plays the mirror face.
@@ -121,7 +118,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
 
   return (
     <div className="game-board">
-      <ScorePanel scores={G.scores} myColor={myColor} currentColor={currentColor} gameover={gameover} />
+      <ScorePanel scores={G.scores} charges={G.charges ?? { red: 0, blue: 0 }} myColor={myColor} currentColor={currentColor} gameover={gameover} />
 
       {turnMessage && <p className="turn-indicator">{turnMessage}</p>}
 
@@ -136,8 +133,9 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         />
       </div>
 
+      <RingInspector ring={G.ring} seen={G.seen} tokenIndex={G.tokenIndex} currentColor={currentColor} />
+
       <TileTrack
-        skipped={skipped}
         offer={offer}
         upcoming={upcoming}
         currentColor={currentColor}

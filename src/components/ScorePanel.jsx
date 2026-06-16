@@ -1,4 +1,4 @@
-export default function ScorePanel({ scores, myColor, currentColor, gameover }) {
+export default function ScorePanel({ scores, charges, myColor, currentColor, gameover }) {
   function label(color) {
     return color === myColor ? ' (you)' : '';
   }
@@ -7,9 +7,11 @@ export default function ScorePanel({ scores, myColor, currentColor, gameover }) 
     <div className="score-panel">
       <div className={`score-pill red${currentColor === 'red' ? ' active' : ''}`}>
         Red{label('red')}: <strong>{scores.red}</strong>
+        {charges.red > 0 && <span className="charge-badge">⚡{charges.red}</span>}
       </div>
       <div className={`score-pill blue${currentColor === 'blue' ? ' active' : ''}`}>
         Blue{label('blue')}: <strong>{scores.blue}</strong>
+        {charges.blue > 0 && <span className="charge-badge">⚡{charges.blue}</span>}
       </div>
 
       {gameover && (
