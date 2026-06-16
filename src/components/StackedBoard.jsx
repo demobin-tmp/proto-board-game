@@ -13,7 +13,9 @@ const MAX_LAYERS = 10;
 
 // Ground sits at the base. Tiles start one step above (layer+1) so that
 // layer-0 depth faces connect down to the ground plane, not below it.
-const PAD_LEFT = PAD;
+// PAD_LEFT mirrors the rightward stacking reserve so the ground is horizontally
+// centred in the SVG. PAD_TOP mirrors downward so the ground is vertically centred.
+const PAD_LEFT = PAD + (MAX_LAYERS + 1) * DX;
 const PAD_TOP  = PAD + (MAX_LAYERS + 1) * DY;  // +1 for the extra tile-above-ground step
 
 // Ground position (no layer shift)
@@ -26,7 +28,7 @@ function ty(row, layer) { return gy(row) - (layer + 1) * DY; }
 
 // SVG canvas
 const SVG_W = PAD_LEFT + (BOARD_SIZE - 1) * STEP + (MAX_LAYERS + 1) * DX + CW + PAD;
-const SVG_H = PAD_TOP  + BOARD_SIZE * STEP - GAP + PAD;
+const SVG_H = PAD_TOP  + BOARD_SIZE * STEP + PAD_TOP;  // symmetric bottom = PAD_TOP
 
 // --- Colour palette ---
 const BASE_COLOR = {
