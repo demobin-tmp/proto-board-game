@@ -7,11 +7,6 @@ import { SKIP_SIZE } from '../game/game';
 // turns where none of the offer's actual shapes can legally go anywhere.
 const FILLER_CELL = [[0, 0]];
 
-// Color-kind tiles haven't been claimed by a player yet, so anything that
-// isn't the live offer (skipped / upcoming) shows in a neutral tone.
-function previewColor(tile) {
-  return tile.kind === 'grey' ? COLOR_HEX.grey : COLOR_HEX.neutral;
-}
 
 function tileMeta(tile, shape, useFiller) {
   if (useFiller) return '1 cell · dropped for a 1×1';
@@ -23,9 +18,10 @@ function StaticTile({ tile, className, currentColor }) {
   const cells = tile.kind === 'color' && currentColor === 'blue'
     ? shape.mirroredRotations[0]
     : shape.rotations[0];
+  const color = tile.kind === 'grey' ? COLOR_HEX.grey : COLOR_HEX[currentColor];
   return (
     <div className={className}>
-      <MiniShape cells={cells} color={previewColor(tile)} />
+      <MiniShape cells={cells} color={color} />
       <span className="tile-meta">{tileMeta(tile, shape)}</span>
     </div>
   );
