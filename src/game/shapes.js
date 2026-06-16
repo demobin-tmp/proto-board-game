@@ -4,7 +4,7 @@ export const BOARD_SIZE = 8;
 // many copies of it go into the supply: `colorCount` tiles take the placing
 // player's color, `greyCount` tiles stay neutral grey. Tune these freely while
 // balancing — nothing else needs to change.
-const BASE_SHAPES = [
+export const BASE_SHAPES = [
   // monomino (1×1) removed — reserved for a future special role
   { id: 'domino', cells: [[0, 0], [0, 1]], colorCount: 4, greyCount: 2 },
   { id: 'tromino-i', cells: [[0, 0], [0, 1], [0, 2]], colorCount: 3, greyCount: 2 },

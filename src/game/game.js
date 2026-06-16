@@ -134,9 +134,10 @@ export const StackingGame = {
         cells = [[row, col]];
         result = validateFillerPlacement(G.board, G.heights, G.groundColors, row, col, 'color', placerColor);
       } else {
-        // Every tile is a physical piece with two sides showing mirror-image
-        // shapes; the player picks which side is face-up via `flipped`.
-        const mirrored = !!flipped;
+        // Every colored tile is a physical two-sided piece: red plays the
+        // normal face, blue plays the mirror face. For grey tiles the player
+        // chooses which face to use (the `flipped` flag from the client).
+        const mirrored = tile.kind === 'color' ? ctx.currentPlayer === '1' : !!flipped;
         const shape = getShape(tile.shapeId);
         const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
         if (!rotations[rotationIndex]) return INVALID_MOVE;

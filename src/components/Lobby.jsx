@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LobbyClient } from 'boardgame.io/client';
 import { GAME_NAME, SERVER_URL } from '../config';
-import { getShape } from '../game/shapes';
+import { getShape, BASE_SHAPES } from '../game/shapes';
 import { COLOR_HEX } from './colors';
 import MiniShape from './MiniShape';
 
@@ -180,9 +180,9 @@ export default function Lobby({ onJoined }) {
                 <span>Colored</span>
                 <span>Grey</span>
               </div>
-              {Object.entries(customCounts)
-                .filter(([shapeId]) => shapeId !== 'board')
-                .map(([shapeId, counts]) => (
+              {BASE_SHAPES.map(({ id: shapeId }) => {
+                const counts = customCounts[shapeId] ?? { colorCount: 0, greyCount: 0 };
+                return (
                   <div className="profile-editor-row" key={shapeId}>
                     <span className="shape-id">
                       <MiniShape cells={getShape(shapeId).rotations[0]} color={COLOR_HEX.neutral} />
@@ -201,7 +201,8 @@ export default function Lobby({ onJoined }) {
                       onChange={(event) => updateCount(shapeId, 'greyCount', event.target.value)}
                     />
                   </div>
-                ))}
+                );
+              })}
             </div>
           )}
         </>

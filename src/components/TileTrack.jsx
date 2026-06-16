@@ -18,11 +18,14 @@ function tileMeta(tile, shape, useFiller) {
   return `${shape.size} cell${shape.size > 1 ? 's' : ''} · ${tile.kind === 'grey' ? 'grey' : 'colored'}`;
 }
 
-function StaticTile({ tile, className }) {
+function StaticTile({ tile, className, currentColor }) {
   const shape = getShape(tile.shapeId);
+  const cells = tile.kind === 'color' && currentColor === 'blue'
+    ? shape.mirroredRotations[0]
+    : shape.rotations[0];
   return (
     <div className={className}>
-      <MiniShape cells={shape.rotations[0]} color={previewColor(tile)} />
+      <MiniShape cells={cells} color={previewColor(tile)} />
       <span className="tile-meta">{tileMeta(tile, shape)}</span>
     </div>
   );
@@ -35,10 +38,21 @@ function EmptySlot() {
 // Single row showing the ring around the token: tiles previously offered
 // but skipped (left, dimmed), the current selectable offer (middle), and a
 // preview of what's coming up next (right, dimmed).
+// For colored tiles, the current active player's color determines which face
+// is shown — red sees normal, blue sees mirror. Grey tiles flip only when
+// the player explicitly chooses via the flip button.
+function tileRotations(tile, shape, currentColor, isSelected, flipped) {
+  if (tile.kind === 'color') {
+    return currentColor === 'blue' ? shape.mirroredRotations : shape.rotations;
+  }
+  return isSelected && flipped ? shape.mirroredRotations : shape.rotations;
+}
+
 export default function TileTrack({
   skipped,
   offer,
   upcoming,
+  myColor,
   currentColor,
   isActive,
   selectedIndex,
@@ -59,7 +73,7 @@ export default function TileTrack({
       <div className="tile-row">
         {skipSlots.map((tile, i) =>
           tile ? (
-            <StaticTile key={tile.tileId} tile={tile} className="offer-tile skipped-tile" />
+            <StaticTile key={tile.tileId} tile={tile} className="offer-tile skipped-tile" currentColor={currentColor} />
           ) : (
             <EmptySlot key={`skip-empty-${i}`} />
           )
@@ -73,10 +87,7 @@ export default function TileTrack({
         {offer.map((tile, index) => {
           const shape = getShape(tile.shapeId);
           const isSelected = index === selectedIndex;
-          // Every tile renders in its defined orientation; only a selected
-          // grey tile can be flipped to its mirror side (see below).
-          const mirrored = isSelected && flipped;
-          const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
+          const rotations = tileRotations(tile, shape, currentColor, isSelected, flipped);
           const rotation = isSelected && useFiller ? FILLER_CELL : rotations[isSelected ? rotationIndex % rotations.length : 0];
           const color = isSelected && useFiller ? COLOR_HEX[currentColor] : tile.kind === 'grey' ? COLOR_HEX.grey : COLOR_HEX[currentColor];
 
@@ -95,7 +106,7 @@ export default function TileTrack({
         })}
 
         {upcoming.map((tile) => (
-          <StaticTile key={tile.tileId} tile={tile} className="offer-tile upcoming-tile" />
+          <StaticTile key={tile.tileId} tile={tile} className="offer-tile upcoming-tile" currentColor={currentColor} />
         ))}
       </div>
       {selectedIndex != null && (

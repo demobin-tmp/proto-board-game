@@ -65,6 +65,9 @@
     "pentomino-x": { "colorCount": 2, "greyCount": 1 },
     "board": "diagonal"
   },
+  "empty": {
+    "board": "default"
+  },
   "big-pieces": {
     "domino": { "colorCount": 2, "greyCount": 1 },
     "tromino-i": { "colorCount": 2, "greyCount": 1 },

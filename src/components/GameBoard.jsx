@@ -49,8 +49,13 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   );
 
   const selectedTile = selectedOfferIndex != null ? offer[selectedOfferIndex] : null;
+  // Colored tiles are two-sided physical pieces: blue always plays the mirror face.
+  // Grey tiles let the player choose which face to use via the flip button.
+  const effectiveFlipped = selectedTile
+    ? (selectedTile.kind === 'color' ? myColor === 'blue' : flipped)
+    : false;
   const rotations = selectedTile
-    ? (flipped ? getShape(selectedTile.shapeId).mirroredRotations : getShape(selectedTile.shapeId).rotations)
+    ? (effectiveFlipped ? getShape(selectedTile.shapeId).mirroredRotations : getShape(selectedTile.shapeId).rotations)
     : null;
   const activeRotation = rotations ? rotationIndex % rotations.length : 0;
 
@@ -63,10 +68,10 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
       return { cells, legal };
     }
     const anchor = clampAnchor(hoveredCell.row, hoveredCell.col, rotations[activeRotation]);
-    const cells = absoluteCells(selectedTile.shapeId, activeRotation, anchor.row, anchor.col, flipped);
+    const cells = absoluteCells(selectedTile.shapeId, activeRotation, anchor.row, anchor.col, effectiveFlipped);
     const legal = validatePlacement(G.board, G.heights, G.groundColors, cells, selectedTile.kind, currentColor).legal;
     return { cells, legal };
-  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, G.groundColors, currentColor, flipped, useFiller, rotations]);
+  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, G.groundColors, currentColor, effectiveFlipped, useFiller, rotations]);
 
   function selectOffer(index) {
     if (!isActive) return;
@@ -97,7 +102,9 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     if (!isActive || selectedOfferIndex == null || !preview?.legal) return;
     const rotation = useFiller ? FILLER_ROTATION : rotations[activeRotation];
     const anchor = clampAnchor(row, col, rotation);
-    moves.placeShape(selectedOfferIndex, activeRotation, anchor.row, anchor.col, flipped, useFiller);
+    // For colored tiles the server derives the flip from player color; only send flipped for grey.
+    const sendFlipped = selectedTile.kind === 'color' ? false : flipped;
+    moves.placeShape(selectedOfferIndex, activeRotation, anchor.row, anchor.col, sendFlipped, useFiller);
     setSelectedOfferIndex(null);
     setRotationIndex(0);
     setFlipped(false);
@@ -137,7 +144,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         isActive={isActive}
         selectedIndex={selectedOfferIndex}
         rotationIndex={activeRotation}
-        flipped={flipped}
+        flipped={effectiveFlipped}
         useFiller={useFiller}
         onSelect={selectOffer}
         onRotate={rotateSelection}
