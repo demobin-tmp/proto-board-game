@@ -137,8 +137,9 @@ export const StackingGame = {
       const otherColor = placerColor === 'red' ? 'blue' : 'red';
 
       // Validate charge cost for each power-up type.
-      if (powerUp === 'expand' && G.charges[placerColor] < 1) return INVALID_MOVE;
-      if (powerUp === 'extra-turn' && G.charges[placerColor] < 2) return INVALID_MOVE;
+      if (powerUp === 'expand'       && G.charges[placerColor] < 1) return INVALID_MOVE;
+      if (powerUp === 'extra-turn'   && G.charges[placerColor] < 2) return INVALID_MOVE;
+      if (powerUp === 'ignore-color' && G.charges[placerColor] < 2) return INVALID_MOVE;
       const activeOfferSize = powerUp === 'expand' ? EMPOWERED_OFFER_SIZE : OFFER_SIZE;
       const offer = ringWindow(G.ring, G.tokenIndex, activeOfferSize);
       const entry = offer[offerIndex];
@@ -163,7 +164,7 @@ export const StackingGame = {
         const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
         if (!rotations[rotationIndex]) return INVALID_MOVE;
         cells = absoluteCells(tile.shapeId, rotationIndex, row, col, mirrored);
-        result = validatePlacement(G.board, G.heights, G.groundColors, cells, tile.kind, placerColor);
+        result = validatePlacement(G.board, G.heights, G.groundColors, cells, tile.kind, placerColor, powerUp === 'ignore-color');
       }
       if (!result.legal) return INVALID_MOVE;
 
@@ -184,8 +185,9 @@ export const StackingGame = {
       // Spend charges and advance 1 on the power track for any power-up.
       // Auto-advance also triggers if the other player is already maxed.
       // Both effects are capped at 1 step per turn.
-      if (powerUp === 'expand') G.charges[placerColor] -= 1;
-      if (powerUp === 'extra-turn') G.charges[placerColor] -= 2;
+      if (powerUp === 'expand')       G.charges[placerColor] -= 1;
+      if (powerUp === 'extra-turn')   G.charges[placerColor] -= 2;
+      if (powerUp === 'ignore-color') G.charges[placerColor] -= 2;
       const autoAdvance = G.power[otherColor] >= POWER_TRACK_MAX;
       if ((powerUp || autoAdvance) && G.power[placerColor] < POWER_TRACK_MAX) {
         G.power[placerColor] += 1;
@@ -200,6 +202,29 @@ export const StackingGame = {
       } else {
         events.endTurn();
       }
+    },
+
+    disrupt: ({ G, ctx, events }) => {
+      if (!G.charges) G.charges = { red: 0, blue: 0 };
+      if (!G.power) G.power = { red: 0, blue: 0 };
+
+      const placerColor = PLAYER_COLORS[ctx.currentPlayer];
+      const otherColor = placerColor === 'red' ? 'blue' : 'red';
+
+      if (G.charges[placerColor] < 2) return INVALID_MOVE;
+
+      G.charges[placerColor] -= 2;
+
+      // Push opponent one step forward on the power track.
+      if (G.power[otherColor] < POWER_TRACK_MAX) G.power[otherColor] += 1;
+
+      // Strip one opponent charge (floor at 0).
+      if (G.charges[otherColor] > 0) G.charges[otherColor] -= 1;
+
+      // Using charges always advances the current player too.
+      if (G.power[placerColor] < POWER_TRACK_MAX) G.power[placerColor] += 1;
+
+      events.endTurn();
     },
 
     placeTokens: ({ G, ctx, events }, cells) => {

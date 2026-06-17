@@ -53,6 +53,8 @@ export default function TileTrack({
   canExpand,
   canExtraTurn,
   canPlaceTokens,
+  canIgnoreColor,
+  canDisrupt,
   onSelect,
   onRotate,
   onFlip,
@@ -134,6 +136,22 @@ export default function TileTrack({
             disabled={!canPlaceTokens && powerUp !== 'tokens'}
           >
             ⚡ 4 tokens{powerUp === 'tokens' ? ' ✕' : ''}
+          </button>
+          <button
+            type="button"
+            className={`empower-button${powerUp === 'ignore-color' ? ' active' : ''}`}
+            onClick={() => onTogglePowerUp('ignore-color')}
+            disabled={!canIgnoreColor && powerUp !== 'ignore-color'}
+          >
+            ⚡⚡ Override color{powerUp === 'ignore-color' ? ' ✕' : ''}
+          </button>
+          <button
+            type="button"
+            className="empower-button"
+            onClick={() => onTogglePowerUp('disrupt')}
+            disabled={!canDisrupt}
+          >
+            ⚡⚡ Disrupt
           </button>
         </div>
       )}

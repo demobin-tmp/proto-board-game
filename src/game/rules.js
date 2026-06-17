@@ -29,7 +29,7 @@ function topColor(board, groundColors, row, col) {
 //  3. for colored tiles, every footprint cell's surface (top tile, or bare
 //     ground on a colored board) is unclaimed, already the placing player's
 //     color, or grey. Grey tiles ignore this rule entirely.
-export function validatePlacement(board, heights, groundColors, cells, kind, placerColor) {
+export function validatePlacement(board, heights, groundColors, cells, kind, placerColor, ignoreColor = false) {
   if (!cells.every(inBounds)) {
     return { legal: false, reason: 'out-of-bounds' };
   }
@@ -48,12 +48,28 @@ export function validatePlacement(board, heights, groundColors, cells, kind, pla
   }
 
   if (kind === 'color') {
-    const colorsMatch = cells.every(([row, col]) => {
-      const color = topColor(board, groundColors, row, col);
-      return color === null || color === placerColor || color === 'grey';
-    });
-    if (!colorsMatch) {
-      return { legal: false, reason: 'color-mismatch' };
+    if (ignoreColor) {
+      // Allow landing on one opponent-colored tile, but not on two distinct ones.
+      const foreignIds = new Set();
+      for (const [row, col] of cells) {
+        const color = topColor(board, groundColors, row, col);
+        if (color !== null && color !== placerColor && color !== 'grey') {
+          // Ground-level colored zones have no tileId — treat all ground as one entity.
+          const id = landingHeight > 0 ? board[row][col][landingHeight - 1].tileId : 'ground';
+          foreignIds.add(id);
+        }
+      }
+      if (foreignIds.size > 1) {
+        return { legal: false, reason: 'spans-multiple-foreign-tiles' };
+      }
+    } else {
+      const colorsMatch = cells.every(([row, col]) => {
+        const color = topColor(board, groundColors, row, col);
+        return color === null || color === placerColor || color === 'grey';
+      });
+      if (!colorsMatch) {
+        return { legal: false, reason: 'color-mismatch' };
+      }
     }
   }
 

@@ -46,6 +46,8 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const canExpand = isActive && myCharges >= 1 && myPower < POWER_TRACK_MAX;
   const canExtraTurn = isActive && myCharges >= 2 && myPower < POWER_TRACK_MAX;
   const canPlaceTokens = isActive && myCharges >= 1 && myPower < POWER_TRACK_MAX;
+  const canIgnoreColor = isActive && myCharges >= 2 && myPower < POWER_TRACK_MAX;
+  const canDisrupt = isActive && myCharges >= 2 && myPower < POWER_TRACK_MAX;
 
   const offerSize = powerUp === 'expand' ? EMPOWERED_OFFER_SIZE : OFFER_SIZE;
   const ringEntries = useMemo(
@@ -87,7 +89,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     }
     const anchor = clampAnchor(row, col, rotations[activeRotation]);
     const cells = absoluteCells(selectedTile.shapeId, activeRotation, anchor.row, anchor.col, effectiveFlipped);
-    const legal = validatePlacement(G.board, G.heights, G.groundColors, cells, selectedTile.kind, currentColor).legal;
+    const legal = validatePlacement(G.board, G.heights, G.groundColors, cells, selectedTile.kind, currentColor, powerUp === 'ignore-color').legal;
     return { cells, legal };
   }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, G.groundColors, currentColor, effectiveFlipped, useFiller, rotations, powerUp, tokenCells]);
 
@@ -117,6 +119,10 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   }
 
   function togglePowerUp(type) {
+    if (type === 'disrupt') {
+      moves.disrupt();
+      return;
+    }
     setPowerUp((current) => (current === type ? null : type));
     setSelectedOfferIndex(null);
     setRotationIndex(0);
@@ -198,6 +204,8 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         canExpand={canExpand}
         canExtraTurn={canExtraTurn}
         canPlaceTokens={canPlaceTokens}
+        canIgnoreColor={canIgnoreColor}
+        canDisrupt={canDisrupt}
         onSelect={selectOffer}
         onRotate={rotateSelection}
         onFlip={flipSelection}
