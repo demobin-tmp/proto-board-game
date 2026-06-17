@@ -52,6 +52,7 @@ export default function TileTrack({
   powerUp,
   canExpand,
   canExtraTurn,
+  canPlaceTokens,
   onSelect,
   onRotate,
   onFlip,
@@ -125,6 +126,14 @@ export default function TileTrack({
             disabled={!canExtraTurn && powerUp !== 'extra-turn'}
           >
             ⚡⚡ Extra turn{powerUp === 'extra-turn' ? ' ✕' : ''}
+          </button>
+          <button
+            type="button"
+            className={`empower-button${powerUp === 'tokens' ? ' active' : ''}`}
+            onClick={() => onTogglePowerUp('tokens')}
+            disabled={!canPlaceTokens && powerUp !== 'tokens'}
+          >
+            ⚡ 4 tokens{powerUp === 'tokens' ? ' ✕' : ''}
           </button>
         </div>
       )}

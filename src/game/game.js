@@ -201,6 +201,41 @@ export const StackingGame = {
         events.endTurn();
       }
     },
+
+    placeTokens: ({ G, ctx, events }, cells) => {
+      if (!G.charges) G.charges = { red: 0, blue: 0 };
+      if (!G.power) G.power = { red: 0, blue: 0 };
+
+      const placerColor = PLAYER_COLORS[ctx.currentPlayer];
+      const otherColor = placerColor === 'red' ? 'blue' : 'red';
+
+      if (G.charges[placerColor] < 1) return INVALID_MOVE;
+      if (!Array.isArray(cells) || cells.length !== 4) return INVALID_MOVE;
+
+      const seen = new Set();
+      for (const [r, c] of cells) {
+        if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) return INVALID_MOVE;
+        if (G.heights[r][c] !== 0) return INVALID_MOVE;
+        const gc = G.groundColors[r][c];
+        if (gc && gc !== 'grey' && gc !== placerColor) return INVALID_MOVE;
+        const key = `${r},${c}`;
+        if (seen.has(key)) return INVALID_MOVE;
+        seen.add(key);
+      }
+
+      const tileId = `tok-${ctx.turn}`;
+      for (const [r, c] of cells) {
+        G.board[r][c].push({ color: placerColor, tileId, filler: false });
+        G.heights[r][c] += 1;
+      }
+
+      G.charges[placerColor] -= 1;
+      if (G.power[placerColor] < POWER_TRACK_MAX) {
+        G.power[placerColor] += 1;
+      }
+
+      events.endTurn();
+    },
   },
 
   endIf: ({ G }) => {

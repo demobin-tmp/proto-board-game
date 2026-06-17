@@ -34,6 +34,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const [flipped, setFlipped] = useState(false);
   const [useFiller, setUseFiller] = useState(false);
   const [powerUp, setPowerUp] = useState(null);
+  const [tokenCells, setTokenCells] = useState([]);
   const [hoveredCell, setHoveredCell] = useState(null);
 
   const myColor = PLAYER_COLORS[playerID];
@@ -44,6 +45,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const myPower = power[myColor];
   const canExpand = isActive && myCharges >= 1 && myPower < POWER_TRACK_MAX;
   const canExtraTurn = isActive && myCharges >= 2 && myPower < POWER_TRACK_MAX;
+  const canPlaceTokens = isActive && myCharges >= 1 && myPower < POWER_TRACK_MAX;
 
   const offerSize = powerUp === 'expand' ? EMPOWERED_OFFER_SIZE : OFFER_SIZE;
   const ringEntries = useMemo(
@@ -65,18 +67,29 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const activeRotation = rotations ? rotationIndex % rotations.length : 0;
 
   const preview = useMemo(() => {
-    if (!selectedTile || !hoveredCell || !isActive) return null;
+    if (!isActive || !hoveredCell) return null;
+    const { row, col } = hoveredCell;
+
+    if (powerUp === 'tokens') {
+      const alreadyPicked = tokenCells.some(([r, c]) => r === row && c === col);
+      const atBase = G.heights[row][col] === 0;
+      const gc = G.groundColors?.[row]?.[col];
+      const colorOk = !gc || gc === 'grey' || gc === currentColor;
+      return { cells: [[row, col]], legal: atBase && colorOk && !alreadyPicked };
+    }
+
+    if (!selectedTile) return null;
     if (useFiller) {
-      const anchor = clampAnchor(hoveredCell.row, hoveredCell.col, FILLER_ROTATION);
+      const anchor = clampAnchor(row, col, FILLER_ROTATION);
       const cells = [[anchor.row, anchor.col]];
       const legal = validateFillerPlacement(G.board, G.heights, G.groundColors, anchor.row, anchor.col, 'color', currentColor).legal;
       return { cells, legal };
     }
-    const anchor = clampAnchor(hoveredCell.row, hoveredCell.col, rotations[activeRotation]);
+    const anchor = clampAnchor(row, col, rotations[activeRotation]);
     const cells = absoluteCells(selectedTile.shapeId, activeRotation, anchor.row, anchor.col, effectiveFlipped);
     const legal = validatePlacement(G.board, G.heights, G.groundColors, cells, selectedTile.kind, currentColor).legal;
     return { cells, legal };
-  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, G.groundColors, currentColor, effectiveFlipped, useFiller, rotations]);
+  }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, G.groundColors, currentColor, effectiveFlipped, useFiller, rotations, powerUp, tokenCells]);
 
   function selectOffer(index) {
     if (!isActive) return;
@@ -109,10 +122,27 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     setRotationIndex(0);
     setFlipped(false);
     setUseFiller(false);
+    setTokenCells([]);
   }
 
   function clickCell(row, col) {
-    if (!isActive || selectedOfferIndex == null || !preview?.legal) return;
+    if (!isActive) return;
+
+    if (powerUp === 'tokens') {
+      if (!preview?.legal) return;
+      const next = [...tokenCells, [row, col]];
+      if (next.length === 4) {
+        moves.placeTokens(next);
+        setTokenCells([]);
+        setPowerUp(null);
+        setHoveredCell(null);
+      } else {
+        setTokenCells(next);
+      }
+      return;
+    }
+
+    if (selectedOfferIndex == null || !preview?.legal) return;
     const rotation = useFiller ? FILLER_ROTATION : rotations[activeRotation];
     const anchor = clampAnchor(row, col, rotation);
     // For colored tiles the server derives the flip from player color; only send flipped for grey.
@@ -129,9 +159,11 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const gameover = ctx.gameover;
   const turnMessage = gameover
     ? null
-    : isActive
-      ? 'Your turn — pick a shape, then click the board to place it.'
-      : `Waiting for ${currentColor} to move…`;
+    : isActive && powerUp === 'tokens'
+      ? `Pick token ${tokenCells.length + 1} of 4 — click any empty base-level cell.`
+      : isActive
+        ? 'Your turn — pick a shape, then click the board to place it.'
+        : `Waiting for ${currentColor} to move…`;
 
   return (
     <div className="game-board">
@@ -145,6 +177,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
           heights={G.heights}
           groundColors={G.groundColors}
           preview={preview}
+          tokenSelections={tokenCells}
           onHoverCell={setHoveredCell}
           onClickCell={clickCell}
         />
@@ -164,6 +197,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         powerUp={powerUp}
         canExpand={canExpand}
         canExtraTurn={canExtraTurn}
+        canPlaceTokens={canPlaceTokens}
         onSelect={selectOffer}
         onRotate={rotateSelection}
         onFlip={flipSelection}

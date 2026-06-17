@@ -93,7 +93,7 @@ function sameId(board, heights, row, col, layer, id) {
 }
 
 export default function StackedBoard({
-  board, heights, groundColors, preview, onHoverCell, onClickCell,
+  board, heights, groundColors, preview, tokenSelections, onHoverCell, onClickCell,
 }) {
   const elements = useMemo(() => {
     const items = [];
@@ -205,6 +205,20 @@ export default function StackedBoard({
         });
         return rendered;
       })()}
+
+      {/* ── Pending token selections (confirmed picks not yet submitted) ── */}
+      {tokenSelections?.map(([row, col]) => {
+        const x = tx(col, 0);
+        const y = ty(row, 0);
+        return (
+          <g key={`tok-sel-${row}-${col}`} pointerEvents="none">
+            <LeftFace   x={x} y={y} color="rgba(22,80,40,0.7)" />
+            <BottomFace x={x} y={y} color="rgba(22,80,40,0.7)" />
+            <rect x={x} y={y} width={CW} height={CH}
+              fill="rgba(46,139,87,0.55)" stroke="#2e8b57" strokeWidth={2} />
+          </g>
+        );
+      })}
 
       {/* ── Preview ghost tiles ── */}
       {preview?.cells.map(([row, col]) => {
