@@ -170,6 +170,63 @@
   opacity: 0.8;
 }
 
+.power-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.power-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: rgba(43, 42, 38, 0.15);
+  border: 1px solid rgba(43, 42, 38, 0.2);
+}
+
+.score-pill.red .power-pip.power-pip-filled {
+  background: rgba(192, 57, 43, 0.7);
+  border-color: rgba(192, 57, 43, 0.5);
+}
+
+.score-pill.blue .power-pip.power-pip-filled {
+  background: rgba(47, 111, 176, 0.7);
+  border-color: rgba(47, 111, 176, 0.5);
+}
+
+.power-track-max .power-pip.power-pip-filled {
+  opacity: 0.5;
+}
+
+.power-skip-label {
+  margin-left: 0.3rem;
+  font-size: 0.65em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.empower-button {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #2b2a26;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.empower-button.active {
+  background: #2b2a26;
+  color: #fff;
+}
+
+.empower-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .gameover-banner {
   font-weight: 700;
   font-size: 1.1rem;

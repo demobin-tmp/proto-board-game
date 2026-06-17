@@ -12,6 +12,8 @@ import { absoluteCells, validatePlacement, validateFillerPlacement, scoreForPlac
 // the token comes back around to them.
 export const OFFER_SIZE = 3;
 export const PREVIEW_SIZE = 3;
+export const EMPOWERED_OFFER_SIZE = 6;
+export const POWER_TRACK_MAX = 5;
 
 // How many previously-seen, not-yet-taken tiles to show "behind" the token
 // (i.e. tiles that were offered/previewed earlier but skipped).
@@ -108,6 +110,7 @@ export const StackingGame = {
       groundColors: buildGroundColors(profile.board),
       scores: { red: 0, blue: 0 },
       charges: { red: 0, blue: 0 },
+      power: { red: 0, blue: 0 },
       ring,
       tokenIndex: -1,
       seen: new Array(ring.length).fill(false),
@@ -116,14 +119,31 @@ export const StackingGame = {
     return G;
   },
 
+  turn: {
+    onBegin: ({ G, ctx, events }) => {
+      const currentColor = PLAYER_COLORS[ctx.currentPlayer];
+      if ((G.power?.[currentColor] ?? 0) >= POWER_TRACK_MAX) {
+        events.endTurn();
+      }
+    },
+  },
+
   moves: {
-    placeShape: ({ G, ctx, events }, offerIndex, rotationIndex, row, col, flipped, useFiller) => {
-      const offer = ringWindow(G.ring, G.tokenIndex, OFFER_SIZE);
+    placeShape: ({ G, ctx, events }, offerIndex, rotationIndex, row, col, flipped, useFiller, powerUp) => {
+      if (!G.charges) G.charges = { red: 0, blue: 0 };
+      if (!G.power) G.power = { red: 0, blue: 0 };
+
+      const placerColor = PLAYER_COLORS[ctx.currentPlayer];
+      const otherColor = placerColor === 'red' ? 'blue' : 'red';
+
+      // Validate charge cost for each power-up type.
+      if (powerUp === 'expand' && G.charges[placerColor] < 1) return INVALID_MOVE;
+      if (powerUp === 'extra-turn' && G.charges[placerColor] < 2) return INVALID_MOVE;
+      const activeOfferSize = powerUp === 'expand' ? EMPOWERED_OFFER_SIZE : OFFER_SIZE;
+      const offer = ringWindow(G.ring, G.tokenIndex, activeOfferSize);
       const entry = offer[offerIndex];
       if (!entry) return INVALID_MOVE;
       const tile = entry.tile;
-
-      const placerColor = PLAYER_COLORS[ctx.currentPlayer];
 
       let cells;
       let result;
@@ -158,20 +178,35 @@ export const StackingGame = {
       if (useFiller || tile.kind === 'color') {
         G.scores[placerColor] += scoreForPlacement(cells.length, result.landingHeight);
       } else {
-        if (!G.charges) G.charges = { red: 0, blue: 0 };
         G.charges[placerColor] += 1;
+      }
+
+      // Spend charges and advance 1 on the power track for any power-up.
+      // Auto-advance also triggers if the other player is already maxed.
+      // Both effects are capped at 1 step per turn.
+      if (powerUp === 'expand') G.charges[placerColor] -= 1;
+      if (powerUp === 'extra-turn') G.charges[placerColor] -= 2;
+      const autoAdvance = G.power[otherColor] >= POWER_TRACK_MAX;
+      if ((powerUp || autoAdvance) && G.power[placerColor] < POWER_TRACK_MAX) {
+        G.power[placerColor] += 1;
       }
 
       G.ring[entry.ringIndex] = null;
       G.tokenIndex = entry.ringIndex;
       markSeen(G);
 
-      events.endTurn();
+      if (powerUp === 'extra-turn') {
+        events.endTurn({ next: ctx.currentPlayer });
+      } else {
+        events.endTurn();
+      }
     },
   },
 
   endIf: ({ G }) => {
-    if (ringWindow(G.ring, G.tokenIndex, 1).length > 0) return;
+    const tilesLeft = ringWindow(G.ring, G.tokenIndex, 1).length > 0;
+    const bothMaxed = (G.power?.red ?? 0) >= POWER_TRACK_MAX && (G.power?.blue ?? 0) >= POWER_TRACK_MAX;
+    if (tilesLeft && !bothMaxed) return;
 
     const { red, blue } = G.scores;
     if (red === blue) return { draw: true, scores: G.scores };

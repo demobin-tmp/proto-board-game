@@ -5,7 +5,7 @@ import ScorePanel from './ScorePanel';
 import RingInspector from './RingInspector';
 import { absoluteCells, validatePlacement, validateFillerPlacement } from '../game/rules';
 import { getShape, BOARD_SIZE } from '../game/shapes';
-import { PLAYER_COLORS, OFFER_SIZE, PREVIEW_SIZE, ringWindow } from '../game/game';
+import { PLAYER_COLORS, OFFER_SIZE, EMPOWERED_OFFER_SIZE, POWER_TRACK_MAX, PREVIEW_SIZE, ringWindow } from '../game/game';
 
 // A rotation's cells are normalized so the shape's bounding box starts at
 // (0,0), but for some rotations (chiefly mirrored ones) the hovered cell
@@ -33,17 +33,25 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const [rotationIndex, setRotationIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [useFiller, setUseFiller] = useState(false);
+  const [powerUp, setPowerUp] = useState(null);
   const [hoveredCell, setHoveredCell] = useState(null);
 
   const myColor = PLAYER_COLORS[playerID];
   const currentColor = PLAYER_COLORS[ctx.currentPlayer];
+  const charges = G.charges ?? { red: 0, blue: 0 };
+  const power = G.power ?? { red: 0, blue: 0 };
+  const myCharges = charges[myColor];
+  const myPower = power[myColor];
+  const canExpand = isActive && myCharges >= 1 && myPower < POWER_TRACK_MAX;
+  const canExtraTurn = isActive && myCharges >= 2 && myPower < POWER_TRACK_MAX;
 
+  const offerSize = powerUp === 'expand' ? EMPOWERED_OFFER_SIZE : OFFER_SIZE;
   const ringEntries = useMemo(
-    () => ringWindow(G.ring, G.tokenIndex, OFFER_SIZE + PREVIEW_SIZE),
-    [G.ring, G.tokenIndex]
+    () => ringWindow(G.ring, G.tokenIndex, offerSize + PREVIEW_SIZE),
+    [G.ring, G.tokenIndex, offerSize]
   );
-  const offer = useMemo(() => ringEntries.slice(0, OFFER_SIZE).map((entry) => entry.tile), [ringEntries]);
-  const upcoming = useMemo(() => ringEntries.slice(OFFER_SIZE).map((entry) => entry.tile), [ringEntries]);
+  const offer = useMemo(() => ringEntries.slice(0, offerSize).map((entry) => entry.tile), [ringEntries, offerSize]);
+  const upcoming = useMemo(() => ringEntries.slice(offerSize).map((entry) => entry.tile), [ringEntries, offerSize]);
 
   const selectedTile = selectedOfferIndex != null ? offer[selectedOfferIndex] : null;
   // Colored tiles are two-sided physical pieces: blue always plays the mirror face.
@@ -95,17 +103,26 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     setUseFiller((current) => !current);
   }
 
+  function togglePowerUp(type) {
+    setPowerUp((current) => (current === type ? null : type));
+    setSelectedOfferIndex(null);
+    setRotationIndex(0);
+    setFlipped(false);
+    setUseFiller(false);
+  }
+
   function clickCell(row, col) {
     if (!isActive || selectedOfferIndex == null || !preview?.legal) return;
     const rotation = useFiller ? FILLER_ROTATION : rotations[activeRotation];
     const anchor = clampAnchor(row, col, rotation);
     // For colored tiles the server derives the flip from player color; only send flipped for grey.
     const sendFlipped = selectedTile.kind === 'color' ? false : flipped;
-    moves.placeShape(selectedOfferIndex, activeRotation, anchor.row, anchor.col, sendFlipped, useFiller);
+    moves.placeShape(selectedOfferIndex, activeRotation, anchor.row, anchor.col, sendFlipped, useFiller, powerUp);
     setSelectedOfferIndex(null);
     setRotationIndex(0);
     setFlipped(false);
     setUseFiller(false);
+    setPowerUp(null);
     setHoveredCell(null);
   }
 
@@ -118,7 +135,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
 
   return (
     <div className="game-board">
-      <ScorePanel scores={G.scores} charges={G.charges ?? { red: 0, blue: 0 }} myColor={myColor} currentColor={currentColor} gameover={gameover} />
+      <ScorePanel scores={G.scores} charges={charges} power={power} myColor={myColor} currentColor={currentColor} gameover={gameover} />
 
       {turnMessage && <p className="turn-indicator">{turnMessage}</p>}
 
@@ -144,10 +161,14 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         rotationIndex={activeRotation}
         flipped={effectiveFlipped}
         useFiller={useFiller}
+        powerUp={powerUp}
+        canExpand={canExpand}
+        canExtraTurn={canExtraTurn}
         onSelect={selectOffer}
         onRotate={rotateSelection}
         onFlip={flipSelection}
         onToggleFiller={toggleFiller}
+        onTogglePowerUp={togglePowerUp}
       />
     </div>
   );

@@ -49,10 +49,14 @@ export default function TileTrack({
   rotationIndex,
   flipped,
   useFiller,
+  powerUp,
+  canExpand,
+  canExtraTurn,
   onSelect,
   onRotate,
   onFlip,
   onToggleFiller,
+  onTogglePowerUp,
 }) {
   const selectedTile = selectedIndex != null ? offer[selectedIndex] : null;
 
@@ -101,6 +105,26 @@ export default function TileTrack({
           )}
           <button type="button" className="filler-button" onClick={onToggleFiller}>
             {useFiller ? 'Place full shape' : 'Place 1×1 instead'}
+          </button>
+        </div>
+      )}
+      {isActive && (
+        <div className="tile-controls">
+          <button
+            type="button"
+            className={`empower-button${powerUp === 'expand' ? ' active' : ''}`}
+            onClick={() => onTogglePowerUp('expand')}
+            disabled={!canExpand && powerUp !== 'expand'}
+          >
+            ⚡ select from 6{powerUp === 'expand' ? ' ✕' : ''}
+          </button>
+          <button
+            type="button"
+            className={`empower-button${powerUp === 'extra-turn' ? ' active' : ''}`}
+            onClick={() => onTogglePowerUp('extra-turn')}
+            disabled={!canExtraTurn && powerUp !== 'extra-turn'}
+          >
+            ⚡⚡ Extra turn{powerUp === 'extra-turn' ? ' ✕' : ''}
           </button>
         </div>
       )}
