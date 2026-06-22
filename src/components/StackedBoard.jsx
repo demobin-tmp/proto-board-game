@@ -93,7 +93,7 @@ function sameId(board, heights, row, col, layer, id) {
 }
 
 export default function StackedBoard({
-  board, heights, groundColors, preview, tokenSelections, onHoverCell, onClickCell,
+  board, heights, groundColors, preview, tokenSelections, onHoverCell, onClickCell, onLeaveBoard,
 }) {
   const elements = useMemo(() => {
     const items = [];
@@ -158,7 +158,7 @@ export default function StackedBoard({
       viewBox={`0 0 ${SVG_W} ${SVG_H}`}
       className="stacked-board"
       style={{ display: 'block' }}
-      onMouseLeave={() => onHoverCell(null)}
+      onMouseLeave={onLeaveBoard}
     >
       {/* ── Visual tiles (no pointer events — hit targets are separate) ── */}
       {(() => {

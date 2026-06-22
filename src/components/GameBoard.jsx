@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import StackedBoard from './StackedBoard';
 import TileTrack from './TileTrack';
 import ScorePanel from './ScorePanel';
@@ -36,6 +36,22 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const [powerUp, setPowerUp] = useState(null);
   const [tokenCells, setTokenCells] = useState([]);
   const [hoveredCell, setHoveredCell] = useState(null);
+  // A coarse pointer (touch) has no real hover before a tap, so a tap there
+  // only sets the preview — placing requires a separate, explicit Confirm
+  // button. A fine pointer (mouse) keeps the original single-click-to-place
+  // flow, since hover already previews continuously as the cursor moves.
+  const [isTouchDevice] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+  );
+  // Mirrors hoveredCell but updates synchronously, independent of React's
+  // render/batching timing — used so confirmPlacement (the Confirm button)
+  // always reads the latest hovered cell even right after a tap.
+  const hoveredCellRef = useRef(null);
+
+  function hoverCell(cell) {
+    hoveredCellRef.current = cell;
+    setHoveredCell(cell);
+  }
 
   const myColor = PLAYER_COLORS[playerID];
   const currentColor = PLAYER_COLORS[ctx.currentPlayer];
@@ -68,10 +84,11 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     : null;
   const activeRotation = rotations ? rotationIndex % rotations.length : 0;
 
-  const preview = useMemo(() => {
-    if (!isActive || !hoveredCell) return null;
-    const { row, col } = hoveredCell;
-
+  // Plain function (not a memo) so clickCell can compute legality fresh for
+  // the cell it's confirming, instead of trusting `preview` — which is keyed
+  // off `hoveredCell` state and can still reflect the *previous* cell when a
+  // fast click fires its mouseenter and click in the same React batch.
+  function computePreviewAt(row, col) {
     if (powerUp === 'tokens') {
       const alreadyPicked = tokenCells.some(([r, c]) => r === row && c === col);
       const atBase = G.heights[row][col] === 0;
@@ -91,6 +108,11 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     const cells = absoluteCells(selectedTile.shapeId, activeRotation, anchor.row, anchor.col, effectiveFlipped);
     const legal = validatePlacement(G.board, G.heights, G.groundColors, cells, selectedTile.kind, currentColor, powerUp === 'ignore-color').legal;
     return { cells, legal };
+  }
+
+  const preview = useMemo(() => {
+    if (!isActive || !hoveredCell) return null;
+    return computePreviewAt(hoveredCell.row, hoveredCell.col);
   }, [selectedTile, hoveredCell, activeRotation, isActive, G.board, G.heights, G.groundColors, currentColor, effectiveFlipped, useFiller, rotations, powerUp, tokenCells]);
 
   function selectOffer(index) {
@@ -100,7 +122,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     setRotationIndex(0);
     setFlipped(false);
     setUseFiller(false);
-    setHoveredCell(null);
+    hoverCell(null);
   }
 
   function rotateSelection() {
@@ -131,24 +153,28 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     setTokenCells([]);
   }
 
-  function clickCell(row, col) {
-    if (!isActive) return;
+  // Actually performs a placement at (row, col) — called directly on click
+  // for mouse users, or via the Confirm button for touch users. Computes
+  // legality fresh rather than trusting `preview`, since that's a memo keyed
+  // off `hoveredCell` state and can lag behind within the same fast event.
+  function commitPlacement(row, col) {
+    const confirmedPreview = computePreviewAt(row, col);
 
     if (powerUp === 'tokens') {
-      if (!preview?.legal) return;
+      if (!confirmedPreview?.legal) return;
       const next = [...tokenCells, [row, col]];
       if (next.length === 4) {
         moves.placeTokens(next);
         setTokenCells([]);
         setPowerUp(null);
-        setHoveredCell(null);
+        hoverCell(null);
       } else {
         setTokenCells(next);
       }
       return;
     }
 
-    if (selectedOfferIndex == null || !preview?.legal) return;
+    if (selectedOfferIndex == null || !confirmedPreview?.legal) return;
     const rotation = useFiller ? FILLER_ROTATION : rotations[activeRotation];
     const anchor = clampAnchor(row, col, rotation);
     // For colored tiles the server derives the flip from player color; only send flipped for grey.
@@ -159,17 +185,37 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
     setFlipped(false);
     setUseFiller(false);
     setPowerUp(null);
-    setHoveredCell(null);
+    hoverCell(null);
   }
+
+  function clickCell(row, col) {
+    if (!isActive) return;
+    hoverCell({ row, col });
+    // Touch: a tap only updates the preview — placing needs the Confirm button.
+    // Mouse: hover already previews continuously, so a click commits directly.
+    if (isTouchDevice) return;
+    commitPlacement(row, col);
+  }
+
+  function confirmPlacement() {
+    if (!isActive || !hoveredCellRef.current) return;
+    commitPlacement(hoveredCellRef.current.row, hoveredCellRef.current.col);
+  }
+
+  const canConfirm = isTouchDevice && isActive && (selectedOfferIndex != null || powerUp === 'tokens');
 
   const gameover = ctx.gameover;
   const turnMessage = gameover
     ? null
-    : isActive && powerUp === 'tokens'
-      ? `Pick token ${tokenCells.length + 1} of 4 — click any empty base-level cell.`
-      : isActive
-        ? 'Your turn — pick a shape, then click the board to place it.'
-        : `Waiting for ${currentColor} to move…`;
+    : !isActive
+      ? `Waiting for ${currentColor} to move…`
+      : powerUp === 'tokens'
+        ? isTouchDevice
+          ? `Tap a cell to preview token ${tokenCells.length + 1} of 4, then tap Confirm.`
+          : `Pick token ${tokenCells.length + 1} of 4 — click any empty base-level cell.`
+        : isTouchDevice
+          ? 'Tap a cell to preview, then tap Confirm to place it.'
+          : 'Your turn — pick a shape, then click the board to place it.';
 
   return (
     <div className="game-board">
@@ -184,10 +230,22 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
           groundColors={G.groundColors}
           preview={preview}
           tokenSelections={tokenCells}
-          onHoverCell={setHoveredCell}
+          onHoverCell={hoverCell}
           onClickCell={clickCell}
+          onLeaveBoard={isTouchDevice ? undefined : () => hoverCell(null)}
         />
       </div>
+
+      {canConfirm && (
+        <button
+          type="button"
+          className="confirm-placement-button"
+          onClick={confirmPlacement}
+          disabled={!preview?.legal}
+        >
+          {powerUp === 'tokens' ? `Confirm token ${tokenCells.length + 1} of 4` : 'Confirm placement'}
+        </button>
+      )}
 
       <RingInspector ring={G.ring} seen={G.seen} tokenIndex={G.tokenIndex} currentColor={currentColor} />
 

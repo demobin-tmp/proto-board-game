@@ -262,6 +262,24 @@
   justify-content: center;
 }
 
+.confirm-placement-button {
+  display: block;
+  margin: 0.75rem auto 0;
+  padding: 0.6rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  background: #2e8b57;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-placement-button:disabled {
+  background: #b8b4ab;
+  cursor: default;
+}
+
 .board-grid {
   display: inline-flex;
   flex-direction: column;
