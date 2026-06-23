@@ -1,7 +1,7 @@
 // See server.js for why this imports the CJS build path directly — game.js is
 // loaded both by the Vite-bundled client and the tsx-run server.
 import { INVALID_MOVE } from 'boardgame.io/dist/cjs/core.js';
-import { BOARD_SIZE, DEFAULT_PROFILE, buildTileSupply, getShape } from './shapes';
+import { BOARD_SIZE, DEFAULT_PROFILE, buildTileSupply, getShape, seededShuffle } from './shapes';
 import { absoluteCells, validatePlacement, validateFillerPlacement, scoreForPlacement } from './rules';
 
 // Patchwork-style ring: every tile in the supply gets a fixed slot in a
@@ -103,7 +103,12 @@ export const StackingGame = {
     // composition if none was supplied.
     const profile =
       setupData?.profile && Object.keys(setupData.profile).length > 0 ? setupData.profile : DEFAULT_PROFILE;
-    const ring = random.Shuffle(buildTileSupply(profile));
+    // An explicit seed (testing/debugging a reproducible scenario) uses our
+    // own deterministic shuffle instead of boardgame.io's per-match random,
+    // since the latter can't be driven by setupData — see shapes.js.
+    const ring = setupData?.seed
+      ? seededShuffle(buildTileSupply(profile), setupData.seed)
+      : random.Shuffle(buildTileSupply(profile));
     const G = {
       board: emptyBoard(),
       heights: emptyHeights(),

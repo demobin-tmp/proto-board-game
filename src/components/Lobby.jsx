@@ -17,6 +17,7 @@ export default function Lobby({ onJoined }) {
   const [profileName, setProfileName] = useState('default');
   const [editingProfile, setEditingProfile] = useState(false);
   const [customCounts, setCustomCounts] = useState(null);
+  const [seed, setSeed] = useState('');
 
   // Tile-supply profiles (which shapes are in play and how many of each) are
   // configured server-side in data/profiles.json, so they can be tweaked
@@ -87,7 +88,10 @@ export default function Lobby({ onJoined }) {
     try {
       let matchID = matchCode.trim();
       if (!matchID) {
-        const setupData = customCounts ? { profile: customCounts } : undefined;
+        const trimmedSeed = seed.trim();
+        const setupData = customCounts
+          ? { profile: customCounts, ...(trimmedSeed ? { seed: trimmedSeed } : {}) }
+          : undefined;
         const created = await lobbyClient.createMatch(GAME_NAME, { numPlayers: 2, setupData });
         matchID = created.matchID;
       }
@@ -173,6 +177,15 @@ export default function Lobby({ onJoined }) {
                   <option value="colored">Colored (red/blue halves)</option>
                   <option value="diagonal">Diagonal (red/blue triangles, grey divider)</option>
                 </select>
+              </label>
+
+              <label>
+                Seed (optional — leave blank for a random match)
+                <input
+                  value={seed}
+                  onChange={(event) => setSeed(event.target.value)}
+                  placeholder="e.g. test-1, for a reproducible tile order"
+                />
               </label>
 
               <div className="profile-editor-header">
