@@ -68,6 +68,28 @@
   "empty": {
     "board": "default"
   },
+  "e2e-test": {
+    "domino": { "colorCount": 4, "greyCount": 2 },
+    "tromino-i": { "colorCount": 3, "greyCount": 2 },
+    "tromino-l": { "colorCount": 3, "greyCount": 2 },
+    "tetromino-o": { "colorCount": 2, "greyCount": 1 },
+    "tetromino-t": { "colorCount": 2, "greyCount": 1 },
+    "tetromino-s": { "colorCount": 2, "greyCount": 1 },
+    "tetromino-s-mirror": { "colorCount": 2, "greyCount": 0 },
+    "tetromino-l": { "colorCount": 2, "greyCount": 1 },
+    "tetromino-l-mirror": { "colorCount": 2, "greyCount": 0 },
+    "tetromino-i": { "colorCount": 2, "greyCount": 1 },
+    "pentomino-t": { "colorCount": 2, "greyCount": 1 },
+    "pentomino-t-mirror": { "colorCount": 2, "greyCount": 0 },
+    "pentomino-i": { "colorCount": 2, "greyCount": 1 },
+    "pentomino-p": { "colorCount": 2, "greyCount": 1 },
+    "pentomino-p-mirror": { "colorCount": 2, "greyCount": 0 },
+    "pentomino-u": { "colorCount": 2, "greyCount": 1 },
+    "pentomino-l": { "colorCount": 2, "greyCount": 1 },
+    "pentomino-l-mirror": { "colorCount": 2, "greyCount": 0 },
+    "pentomino-x": { "colorCount": 2, "greyCount": 1 },
+    "board": "default"
+  },
   "big-pieces": {
     "domino": { "colorCount": 2, "greyCount": 1 },
     "tromino-i": { "colorCount": 2, "greyCount": 1 },

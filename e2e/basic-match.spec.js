@@ -5,7 +5,12 @@ import { test, expect } from '@playwright/test';
 // reproducible. Unlike the headless boardgame.io integration tests in
 // src/game/, this drives the real app end to end — Lobby, server, sockets,
 // and the actual GameBoard UI — so it can be watched with `--headed`.
+//
+// Uses the "e2e-test" profile (data/profiles.json) rather than "default" —
+// it's a frozen copy, so future rebalancing of the real default profile
+// can't silently change this test's behavior.
 const TEST_SEED = 'e2e-basic-seed-1';
+const TEST_PROFILE = 'e2e-test';
 
 test('two players start a seeded match and Red places one legal tile', async ({ browser }) => {
   const redContext = await browser.newContext();
@@ -17,6 +22,7 @@ test('two players start a seeded match and Red places one legal tile', async ({ 
   await red.goto('/');
   await red.getByPlaceholder('optional').fill('Red');
   await red.getByLabel('Seat').selectOption('0');
+  await red.getByLabel('Base settings').selectOption(TEST_PROFILE);
   await red.getByRole('button', { name: 'Edit game' }).click();
   await red.getByPlaceholder(/reproducible tile order/).fill(TEST_SEED);
   await red.getByRole('button', { name: 'Create match' }).click();
@@ -35,12 +41,9 @@ test('two players start a seeded match and Red places one legal tile', async ({ 
   await expect(blue.locator('.game-board')).toBeVisible();
   await expect(red.locator('.turn-indicator')).toContainText('Your turn');
 
-  // --- Red places the first offered tile at the top-left corner ---
-  // Rotation 0 of every shape in the default profile fits an empty 8x8
-  // board anchored at (0,0), so this is legal regardless of which tile the
-  // fixed seed happens to offer first.
-  await red.locator('.offer-tile').first().click();
-  await red.locator('[data-row="0"][data-col="0"]').click();
+  // --- Red places the second offered tile at the top-left corner ---
+  await red.locator('.offer-tile').nth(1).click();
+  await red.locator('[data-row="3"][data-col="3"]').click();
 
   // Turn passes to Blue, visible from both sides.
   await expect(blue.locator('.turn-indicator')).toContainText('Your turn');
