@@ -41,11 +41,55 @@ test('two players start a seeded match and Red places one legal tile', async ({ 
   await expect(blue.locator('.game-board')).toBeVisible();
   await expect(red.locator('.turn-indicator')).toContainText('Your turn');
 
-  // --- Red places the second offered tile at the top-left corner ---
+  // Turn 1
+  // --- Red places the second offered tile in the center ---
   await red.locator('.offer-tile').nth(1).click();
   await red.locator('[data-row="3"][data-col="3"]').click();
 
   // Turn passes to Blue, visible from both sides.
   await expect(blue.locator('.turn-indicator')).toContainText('Your turn');
   await expect(red.locator('.turn-indicator')).toContainText('Waiting');
+
+  // --- Blue tries to place the third offered tile on top of Red's tile, but it's illegal ---
+  await blue.locator('.offer-tile').nth(2).click();
+  await blue.locator('[data-row="3"][data-col="3"]').click();
+
+  // Rejected client-side before any move is sent: turn doesn't pass, and the
+  // tile stays selected since nothing happened.
+  await expect(blue.locator('.turn-indicator')).toContainText('Your turn');
+  await expect(red.locator('.turn-indicator')).toContainText('Waiting');
+  await expect(blue.locator('.offer-tile.selected')).toHaveCount(1);
+
+  // --- Blue place third tile in the center ---
+  await blue.locator('[data-row="3"][data-col="4"]').click();
+
+  // Turn 2
+  // --- Red tries to place the second offered tile in the center (second layer), but it is illegal (placed on top of blue tile) ---
+  await red.locator('.offer-tile').nth(1).click();
+  await red.locator('[data-row="3"][data-col="3"]').click();
+
+  await red.locator('[data-row="5"][data-col="3"]').click();
+
+  // --- Check scores, everithing on first layer ---
+  await expect(red.locator('.score-pill.red strong')).toHaveText('8');
+  await expect(red.locator('.score-pill.blue strong')).toHaveText('4');
+
+  await blue.locator('.offer-tile').nth(0).click();
+  await blue.locator('.rotate-button').click();
+  await blue.locator('[data-row="3"][data-col="6"]').click();
+
+  // Turn 3
+  await expect(red.locator('.turn-indicator')).toContainText('Your turn');
+
+  // Red tries to place the second offered tile (second layer), but it is illegal (only based on one shape)
+  await red.locator('.offer-tile').nth(2).click();
+  await red.locator('.rotate-button').click();
+  await red.locator('[data-row="6"][data-col="3"]').click();
+  await red.locator('.rotate-button').click();
+  await red.locator('.rotate-button').click();
+  await red.locator('.rotate-button').click();
+
+  // Legal move on second layer
+  await red.locator('[data-row="4"][data-col="3"]').click();
+  await expect(red.locator('.score-pill.red strong')).toHaveText('16');
 });
