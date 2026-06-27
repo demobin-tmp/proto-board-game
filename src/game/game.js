@@ -16,7 +16,8 @@ export const EMPOWERED_OFFER_SIZE = 6;
 export const POWER_TRACK_MAX = 3;
 
 // Each player may activate at most this many power-ups in total (any mix of
-// expand/extra-turn/ignore-color/tokens/disrupt) over the course of a match.
+// expand/extra-turn/ignore-color/tokens/the 1x1-filler drop) over the course
+// of a match.
 export const POWER_UP_LIMIT = 3;
 
 // How many previously-seen, not-yet-taken tiles to show "behind" the token
@@ -25,6 +26,13 @@ export const SKIP_SIZE = 3;
 
 // Seat '0' always plays red, seat '1' always plays blue.
 export const PLAYER_COLORS = { '0': 'red', '1': 'blue' };
+
+// Selectable AI opponents. The Lobby tags the bot's seat with `name` and
+// tells the server which `id` to run — see server.js's BOT_STRATEGIES and
+// startBot.
+export const BOTS = {
+  jane: { name: 'Jane (AI)' },
+};
 
 function emptyBoard() {
   return Array.from({ length: BOARD_SIZE }, () =>
@@ -98,6 +106,21 @@ function markSeen(G) {
   }
 }
 
+// Advances `color`'s power track by 1, capped at POWER_TRACK_MAX. The first
+// time anyone reaches the cap, that's recorded — see endIf, which ends the
+// match once the opponent's next move resolves (marked by the
+// `G.maxReachedBy && placerColor !== G.maxReachedBy` check in each move).
+// That's the "opponent gets exactly one additional turn" rule: not a
+// permanent bench for the maxed player with the opponent playing on
+// indefinitely, just a hard stop right after that one guaranteed move.
+function advancePower(G, color) {
+  if (G.power[color] >= POWER_TRACK_MAX) return;
+  G.power[color] += 1;
+  if (G.power[color] >= POWER_TRACK_MAX && G.maxReachedBy == null) {
+    G.maxReachedBy = color;
+  }
+}
+
 export const StackingGame = {
   name: 'stacking-tiles',
 
@@ -121,21 +144,14 @@ export const StackingGame = {
       charges: { red: 0, blue: 0 },
       power: { red: 0, blue: 0 },
       powerUpsUsed: { red: 0, blue: 0 },
+      maxReachedBy: null,
+      bonusMoveTaken: false,
       ring,
       tokenIndex: -1,
       seen: new Array(ring.length).fill(false),
     };
     markSeen(G);
     return G;
-  },
-
-  turn: {
-    onBegin: ({ G, ctx, events }) => {
-      const currentColor = PLAYER_COLORS[ctx.currentPlayer];
-      if ((G.power?.[currentColor] ?? 0) >= POWER_TRACK_MAX) {
-        events.endTurn();
-      }
-    },
   },
 
   moves: {
@@ -145,12 +161,12 @@ export const StackingGame = {
       if (!G.powerUpsUsed) G.powerUpsUsed = { red: 0, blue: 0 };
 
       const placerColor = PLAYER_COLORS[ctx.currentPlayer];
-      const otherColor = placerColor === 'red' ? 'blue' : 'red';
 
-      // Validate charge cost for each power-up type, and the per-match limit
-      // shared across all power-up types (expand/extra-turn/ignore-color
-      // here, plus tokens/disrupt in their own moves below).
-      if (powerUp && G.powerUpsUsed[placerColor] >= POWER_UP_LIMIT) return INVALID_MOVE;
+      // Dropping a 1x1 filler instead of the offered shape is itself a
+      // power-up now: free (0 charges) but still capped by the shared
+      // per-match limit, and it still advances the power track.
+      const usesPowerUp = !!powerUp || useFiller;
+      if (usesPowerUp && G.powerUpsUsed[placerColor] >= POWER_UP_LIMIT) return INVALID_MOVE;
       if (powerUp === 'expand'       && G.charges[placerColor] < 1) return INVALID_MOVE;
       if (powerUp === 'extra-turn'   && G.charges[placerColor] < 2) return INVALID_MOVE;
       if (powerUp === 'ignore-color' && G.charges[placerColor] < 2) return INVALID_MOVE;
@@ -196,17 +212,20 @@ export const StackingGame = {
         G.charges[placerColor] += 1;
       }
 
-      // Spend charges and advance 1 on the power track for any power-up.
-      // Auto-advance also triggers if the other player is already maxed.
-      // Both effects are capped at 1 step per turn.
+      // Spend charges for the charge-costing power-ups (the filler "power-up"
+      // is free). Advancing the power track is unified across every power-up
+      // type via advancePower, including the filler.
       if (powerUp === 'expand')       G.charges[placerColor] -= 1;
       if (powerUp === 'extra-turn')   G.charges[placerColor] -= 2;
       if (powerUp === 'ignore-color') G.charges[placerColor] -= 2;
-      if (powerUp) G.powerUpsUsed[placerColor] += 1;
-      const autoAdvance = G.power[otherColor] >= POWER_TRACK_MAX;
-      if ((powerUp || autoAdvance) && G.power[placerColor] < POWER_TRACK_MAX) {
-        G.power[placerColor] += 1;
+      if (usesPowerUp) {
+        G.powerUpsUsed[placerColor] += 1;
+        advancePower(G, placerColor);
       }
+      // This move is complete and legal — if the opponent reached the end of
+      // the power track earlier, this is their one guaranteed move; endIf
+      // ends the match right after it.
+      if (G.maxReachedBy && G.maxReachedBy !== placerColor) G.bonusMoveTaken = true;
 
       G.ring[entry.ringIndex] = null;
       G.tokenIndex = entry.ringIndex;
@@ -219,39 +238,12 @@ export const StackingGame = {
       }
     },
 
-    disrupt: ({ G, ctx, events }) => {
-      if (!G.charges) G.charges = { red: 0, blue: 0 };
-      if (!G.power) G.power = { red: 0, blue: 0 };
-      if (!G.powerUpsUsed) G.powerUpsUsed = { red: 0, blue: 0 };
-
-      const placerColor = PLAYER_COLORS[ctx.currentPlayer];
-      const otherColor = placerColor === 'red' ? 'blue' : 'red';
-
-      if (G.powerUpsUsed[placerColor] >= POWER_UP_LIMIT) return INVALID_MOVE;
-      if (G.charges[placerColor] < 2) return INVALID_MOVE;
-
-      G.charges[placerColor] -= 2;
-      G.powerUpsUsed[placerColor] += 1;
-
-      // Push opponent one step forward on the power track.
-      if (G.power[otherColor] < POWER_TRACK_MAX) G.power[otherColor] += 1;
-
-      // Strip one opponent charge (floor at 0).
-      if (G.charges[otherColor] > 0) G.charges[otherColor] -= 1;
-
-      // Using charges always advances the current player too.
-      if (G.power[placerColor] < POWER_TRACK_MAX) G.power[placerColor] += 1;
-
-      events.endTurn();
-    },
-
     placeTokens: ({ G, ctx, events }, cells) => {
       if (!G.charges) G.charges = { red: 0, blue: 0 };
       if (!G.power) G.power = { red: 0, blue: 0 };
       if (!G.powerUpsUsed) G.powerUpsUsed = { red: 0, blue: 0 };
 
       const placerColor = PLAYER_COLORS[ctx.currentPlayer];
-      const otherColor = placerColor === 'red' ? 'blue' : 'red';
 
       if (G.powerUpsUsed[placerColor] >= POWER_UP_LIMIT) return INVALID_MOVE;
       if (G.charges[placerColor] < 1) return INVALID_MOVE;
@@ -276,9 +268,8 @@ export const StackingGame = {
 
       G.charges[placerColor] -= 1;
       G.powerUpsUsed[placerColor] += 1;
-      if (G.power[placerColor] < POWER_TRACK_MAX) {
-        G.power[placerColor] += 1;
-      }
+      advancePower(G, placerColor);
+      if (G.maxReachedBy && G.maxReachedBy !== placerColor) G.bonusMoveTaken = true;
 
       events.endTurn();
     },
@@ -286,8 +277,11 @@ export const StackingGame = {
 
   endIf: ({ G }) => {
     const tilesLeft = ringWindow(G.ring, G.tokenIndex, 1).length > 0;
-    const bothMaxed = (G.power?.red ?? 0) >= POWER_TRACK_MAX && (G.power?.blue ?? 0) >= POWER_TRACK_MAX;
-    if (tilesLeft && !bothMaxed) return;
+    // The match ends right after the opponent's one guaranteed move,
+    // following whichever player first reached the end of the power track —
+    // not an indefinite reprieve while that player keeps playing on.
+    const matchOver = G.maxReachedBy != null && G.bonusMoveTaken;
+    if (tilesLeft && !matchOver) return;
 
     const { red, blue } = G.scores;
     if (red === blue) return { draw: true, scores: G.scores };

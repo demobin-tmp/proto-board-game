@@ -7,7 +7,7 @@ function PowerTrack({ value, color }) {
       {Array.from({ length: POWER_TRACK_MAX }, (_, i) => (
         <span key={i} className={`power-pip${i < value ? ' power-pip-filled' : ''}`} />
       ))}
-      {atMax && <span className="power-skip-label">SKIP</span>}
+      {atMax && <span className="power-skip-label">MAX</span>}
     </span>
   );
 }

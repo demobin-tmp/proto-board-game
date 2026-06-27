@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { LobbyClient } from 'boardgame.io/client';
 import { GAME_NAME, SERVER_URL } from '../config';
 import { getShape, BASE_SHAPES } from '../game/shapes';
+import { BOTS } from '../game/game';
 import { COLOR_HEX } from './colors';
 import MiniShape from './MiniShape';
 
@@ -18,6 +19,7 @@ export default function Lobby({ onJoined }) {
   const [editingProfile, setEditingProfile] = useState(false);
   const [customCounts, setCustomCounts] = useState(null);
   const [seed, setSeed] = useState('');
+  const [opponent, setOpponent] = useState('human');
 
   // Tile-supply profiles (which shapes are in play and how many of each) are
   // configured server-side in data/profiles.json, so they can be tweaked
@@ -87,7 +89,8 @@ export default function Lobby({ onJoined }) {
     setError(null);
     try {
       let matchID = matchCode.trim();
-      if (!matchID) {
+      const creatingNewMatch = !matchID;
+      if (creatingNewMatch) {
         const trimmedSeed = seed.trim();
         const setupData = customCounts
           ? { profile: customCounts, ...(trimmedSeed ? { seed: trimmedSeed } : {}) }
@@ -99,6 +102,17 @@ export default function Lobby({ onJoined }) {
         playerID: seat,
         playerName: playerName.trim() || `Player ${seat}`,
       });
+
+      if (creatingNewMatch && opponent !== 'human') {
+        const botSeat = seat === '0' ? '1' : '0';
+        const { playerCredentials: botCredentials } = await lobbyClient.joinMatch(GAME_NAME, matchID, {
+          playerID: botSeat,
+          playerName: BOTS[opponent].name,
+        });
+        const params = new URLSearchParams({ matchID, playerID: botSeat, credentials: botCredentials, bot: opponent });
+        await fetch(`${SERVER_URL}/bots/start?${params}`);
+      }
+
       onJoined({ matchID, playerID: seat, credentials: playerCredentials });
     } catch (err) {
       setError(err.message || String(err));
@@ -143,6 +157,18 @@ export default function Lobby({ onJoined }) {
 
       {!matchCode.trim() && profiles && (
         <>
+          <label>
+            Opponent
+            <select value={opponent} onChange={(event) => setOpponent(event.target.value)}>
+              <option value="human">Human (share the match code)</option>
+              {Object.entries(BOTS).map(([id, bot]) => (
+                <option key={id} value={id}>
+                  {bot.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label>
             Base settings
             <select

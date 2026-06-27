@@ -66,7 +66,9 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const canExtraTurn = underLimit && myCharges >= 2 && myPower < POWER_TRACK_MAX;
   const canPlaceTokens = underLimit && myCharges >= 1 && myPower < POWER_TRACK_MAX;
   const canIgnoreColor = underLimit && myCharges >= 2 && myPower < POWER_TRACK_MAX;
-  const canDisrupt = underLimit && myCharges >= 2 && myPower < POWER_TRACK_MAX;
+  // Placing a 1x1 filler is itself a power-up now (free, but capped by the
+  // same per-match limit), so it shares the same gating minus the charge check.
+  const canUseFiller = underLimit;
 
   const offerSize = powerUp === 'expand' ? EMPOWERED_OFFER_SIZE : OFFER_SIZE;
   const ringEntries = useMemo(
@@ -140,14 +142,11 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
 
   function toggleFiller() {
     if (!selectedTile) return;
+    if (!useFiller && !canUseFiller) return;
     setUseFiller((current) => !current);
   }
 
   function togglePowerUp(type) {
-    if (type === 'disrupt') {
-      moves.disrupt();
-      return;
-    }
     setPowerUp((current) => (current === type ? null : type));
     setSelectedOfferIndex(null);
     setRotationIndex(0);
@@ -261,12 +260,12 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         rotationIndex={activeRotation}
         flipped={effectiveFlipped}
         useFiller={useFiller}
+        canUseFiller={canUseFiller}
         powerUp={powerUp}
         canExpand={canExpand}
         canExtraTurn={canExtraTurn}
         canPlaceTokens={canPlaceTokens}
         canIgnoreColor={canIgnoreColor}
-        canDisrupt={canDisrupt}
         powerUpsLeft={myPowerUpsLeft}
         onSelect={selectOffer}
         onRotate={rotateSelection}

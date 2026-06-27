@@ -49,12 +49,12 @@ export default function TileTrack({
   rotationIndex,
   flipped,
   useFiller,
+  canUseFiller,
   powerUp,
   canExpand,
   canExtraTurn,
   canPlaceTokens,
   canIgnoreColor,
-  canDisrupt,
   powerUpsLeft,
   onSelect,
   onRotate,
@@ -107,8 +107,13 @@ export default function TileTrack({
               Flip ⇄
             </button>
           )}
-          <button type="button" className="filler-button" onClick={onToggleFiller}>
-            {useFiller ? 'Place full shape' : 'Place 1×1 instead'}
+          <button
+            type="button"
+            className="filler-button"
+            onClick={onToggleFiller}
+            disabled={!useFiller && !canUseFiller}
+          >
+            {useFiller ? '⚡ Place full shape' : '⚡ Place 1×1 instead'}
           </button>
         </div>
       )}
@@ -146,14 +151,6 @@ export default function TileTrack({
             disabled={!canIgnoreColor && powerUp !== 'ignore-color'}
           >
             ⚡⚡ Override color{powerUp === 'ignore-color' ? ' ✕' : ''}
-          </button>
-          <button
-            type="button"
-            className="empower-button"
-            onClick={() => onTogglePowerUp('disrupt')}
-            disabled={!canDisrupt}
-          >
-            ⚡⚡ Disrupt
           </button>
         </div>
       )}
