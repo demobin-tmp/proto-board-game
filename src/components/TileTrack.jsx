@@ -55,6 +55,7 @@ export default function TileTrack({
   canPlaceTokens,
   canIgnoreColor,
   canDisrupt,
+  powerUpsLeft,
   onSelect,
   onRotate,
   onFlip,
@@ -113,6 +114,7 @@ export default function TileTrack({
       )}
       {isActive && (
         <div className="tile-controls">
+          <span className="power-ups-left">{powerUpsLeft} power-up{powerUpsLeft === 1 ? '' : 's'} left</span>
           <button
             type="button"
             className={`empower-button${powerUp === 'expand' ? ' active' : ''}`}

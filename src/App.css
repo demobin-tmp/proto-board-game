@@ -239,6 +239,13 @@
   cursor: default;
 }
 
+.power-ups-left {
+  font-size: 0.75rem;
+  color: #6b6357;
+  align-self: center;
+  margin-right: 0.25rem;
+}
+
 .gameover-banner {
   font-weight: 700;
   font-size: 1.1rem;

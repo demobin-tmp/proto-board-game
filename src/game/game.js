@@ -13,7 +13,11 @@ import { absoluteCells, validatePlacement, validateFillerPlacement, scoreForPlac
 export const OFFER_SIZE = 3;
 export const PREVIEW_SIZE = 3;
 export const EMPOWERED_OFFER_SIZE = 6;
-export const POWER_TRACK_MAX = 5;
+export const POWER_TRACK_MAX = 3;
+
+// Each player may activate at most this many power-ups in total (any mix of
+// expand/extra-turn/ignore-color/tokens/disrupt) over the course of a match.
+export const POWER_UP_LIMIT = 3;
 
 // How many previously-seen, not-yet-taken tiles to show "behind" the token
 // (i.e. tiles that were offered/previewed earlier but skipped).
@@ -116,6 +120,7 @@ export const StackingGame = {
       scores: { red: 0, blue: 0 },
       charges: { red: 0, blue: 0 },
       power: { red: 0, blue: 0 },
+      powerUpsUsed: { red: 0, blue: 0 },
       ring,
       tokenIndex: -1,
       seen: new Array(ring.length).fill(false),
@@ -137,11 +142,15 @@ export const StackingGame = {
     placeShape: ({ G, ctx, events }, offerIndex, rotationIndex, row, col, flipped, useFiller, powerUp) => {
       if (!G.charges) G.charges = { red: 0, blue: 0 };
       if (!G.power) G.power = { red: 0, blue: 0 };
+      if (!G.powerUpsUsed) G.powerUpsUsed = { red: 0, blue: 0 };
 
       const placerColor = PLAYER_COLORS[ctx.currentPlayer];
       const otherColor = placerColor === 'red' ? 'blue' : 'red';
 
-      // Validate charge cost for each power-up type.
+      // Validate charge cost for each power-up type, and the per-match limit
+      // shared across all power-up types (expand/extra-turn/ignore-color
+      // here, plus tokens/disrupt in their own moves below).
+      if (powerUp && G.powerUpsUsed[placerColor] >= POWER_UP_LIMIT) return INVALID_MOVE;
       if (powerUp === 'expand'       && G.charges[placerColor] < 1) return INVALID_MOVE;
       if (powerUp === 'extra-turn'   && G.charges[placerColor] < 2) return INVALID_MOVE;
       if (powerUp === 'ignore-color' && G.charges[placerColor] < 2) return INVALID_MOVE;
@@ -193,6 +202,7 @@ export const StackingGame = {
       if (powerUp === 'expand')       G.charges[placerColor] -= 1;
       if (powerUp === 'extra-turn')   G.charges[placerColor] -= 2;
       if (powerUp === 'ignore-color') G.charges[placerColor] -= 2;
+      if (powerUp) G.powerUpsUsed[placerColor] += 1;
       const autoAdvance = G.power[otherColor] >= POWER_TRACK_MAX;
       if ((powerUp || autoAdvance) && G.power[placerColor] < POWER_TRACK_MAX) {
         G.power[placerColor] += 1;
@@ -212,13 +222,16 @@ export const StackingGame = {
     disrupt: ({ G, ctx, events }) => {
       if (!G.charges) G.charges = { red: 0, blue: 0 };
       if (!G.power) G.power = { red: 0, blue: 0 };
+      if (!G.powerUpsUsed) G.powerUpsUsed = { red: 0, blue: 0 };
 
       const placerColor = PLAYER_COLORS[ctx.currentPlayer];
       const otherColor = placerColor === 'red' ? 'blue' : 'red';
 
+      if (G.powerUpsUsed[placerColor] >= POWER_UP_LIMIT) return INVALID_MOVE;
       if (G.charges[placerColor] < 2) return INVALID_MOVE;
 
       G.charges[placerColor] -= 2;
+      G.powerUpsUsed[placerColor] += 1;
 
       // Push opponent one step forward on the power track.
       if (G.power[otherColor] < POWER_TRACK_MAX) G.power[otherColor] += 1;
@@ -235,10 +248,12 @@ export const StackingGame = {
     placeTokens: ({ G, ctx, events }, cells) => {
       if (!G.charges) G.charges = { red: 0, blue: 0 };
       if (!G.power) G.power = { red: 0, blue: 0 };
+      if (!G.powerUpsUsed) G.powerUpsUsed = { red: 0, blue: 0 };
 
       const placerColor = PLAYER_COLORS[ctx.currentPlayer];
       const otherColor = placerColor === 'red' ? 'blue' : 'red';
 
+      if (G.powerUpsUsed[placerColor] >= POWER_UP_LIMIT) return INVALID_MOVE;
       if (G.charges[placerColor] < 1) return INVALID_MOVE;
       if (!Array.isArray(cells) || cells.length !== 4) return INVALID_MOVE;
 
@@ -260,6 +275,7 @@ export const StackingGame = {
       }
 
       G.charges[placerColor] -= 1;
+      G.powerUpsUsed[placerColor] += 1;
       if (G.power[placerColor] < POWER_TRACK_MAX) {
         G.power[placerColor] += 1;
       }

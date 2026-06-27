@@ -5,7 +5,7 @@ import ScorePanel from './ScorePanel';
 import RingInspector from './RingInspector';
 import { absoluteCells, validatePlacement, validateFillerPlacement } from '../game/rules';
 import { getShape, BOARD_SIZE } from '../game/shapes';
-import { PLAYER_COLORS, OFFER_SIZE, EMPOWERED_OFFER_SIZE, POWER_TRACK_MAX, PREVIEW_SIZE, ringWindow } from '../game/game';
+import { PLAYER_COLORS, OFFER_SIZE, EMPOWERED_OFFER_SIZE, POWER_TRACK_MAX, POWER_UP_LIMIT, PREVIEW_SIZE, ringWindow } from '../game/game';
 
 // A rotation's cells are normalized so the shape's bounding box starts at
 // (0,0), but for some rotations (chiefly mirrored ones) the hovered cell
@@ -57,13 +57,16 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const currentColor = PLAYER_COLORS[ctx.currentPlayer];
   const charges = G.charges ?? { red: 0, blue: 0 };
   const power = G.power ?? { red: 0, blue: 0 };
+  const powerUpsUsed = G.powerUpsUsed ?? { red: 0, blue: 0 };
   const myCharges = charges[myColor];
   const myPower = power[myColor];
-  const canExpand = isActive && myCharges >= 1 && myPower < POWER_TRACK_MAX;
-  const canExtraTurn = isActive && myCharges >= 2 && myPower < POWER_TRACK_MAX;
-  const canPlaceTokens = isActive && myCharges >= 1 && myPower < POWER_TRACK_MAX;
-  const canIgnoreColor = isActive && myCharges >= 2 && myPower < POWER_TRACK_MAX;
-  const canDisrupt = isActive && myCharges >= 2 && myPower < POWER_TRACK_MAX;
+  const myPowerUpsLeft = POWER_UP_LIMIT - powerUpsUsed[myColor];
+  const underLimit = isActive && myPowerUpsLeft > 0;
+  const canExpand = underLimit && myCharges >= 1 && myPower < POWER_TRACK_MAX;
+  const canExtraTurn = underLimit && myCharges >= 2 && myPower < POWER_TRACK_MAX;
+  const canPlaceTokens = underLimit && myCharges >= 1 && myPower < POWER_TRACK_MAX;
+  const canIgnoreColor = underLimit && myCharges >= 2 && myPower < POWER_TRACK_MAX;
+  const canDisrupt = underLimit && myCharges >= 2 && myPower < POWER_TRACK_MAX;
 
   const offerSize = powerUp === 'expand' ? EMPOWERED_OFFER_SIZE : OFFER_SIZE;
   const ringEntries = useMemo(
@@ -264,6 +267,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         canPlaceTokens={canPlaceTokens}
         canIgnoreColor={canIgnoreColor}
         canDisrupt={canDisrupt}
+        powerUpsLeft={myPowerUpsLeft}
         onSelect={selectOffer}
         onRotate={rotateSelection}
         onFlip={flipSelection}
