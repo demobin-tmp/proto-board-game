@@ -34,6 +34,14 @@ export function validatePlacement(board, heights, groundColors, cells, kind, pla
     return { legal: false, reason: 'out-of-bounds' };
   }
 
+  // "Black" ground blocks every placement outright, color or grey alike —
+  // unlike the red/blue/grey zones below, which only ever restrict colored
+  // tiles. Grey tiles skip the kind === 'color' check entirely, so this has
+  // to be its own unconditional check.
+  if (cells.some(([row, col]) => groundColors?.[row]?.[col] === 'black')) {
+    return { legal: false, reason: 'blocked' };
+  }
+
   const landingHeight = heights[cells[0][0]][cells[0][1]];
   const restsFlat = cells.every(([row, col]) => heights[row][col] === landingHeight);
   if (!restsFlat) {
@@ -91,6 +99,10 @@ export function scoreForPlacement(cellCount, landingHeight) {
 export function validateFillerPlacement(board, heights, groundColors, row, col, kind, placerColor) {
   if (!inBounds([row, col])) {
     return { legal: false, reason: 'out-of-bounds' };
+  }
+
+  if (groundColors?.[row]?.[col] === 'black') {
+    return { legal: false, reason: 'blocked' };
   }
 
   const landingHeight = heights[row][col];

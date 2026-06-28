@@ -202,6 +202,7 @@ export default function Lobby({ onJoined }) {
                   <option value="default">Default (neutral ground)</option>
                   <option value="colored">Colored (red/blue halves)</option>
                   <option value="diagonal">Diagonal (red/blue triangles, grey divider)</option>
+                  <option value="black">Black hole (2x2 blocked dead centre)</option>
                 </select>
               </label>
 

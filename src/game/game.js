@@ -49,7 +49,9 @@ function emptyHeights() {
 // half and a blue half, and the "diagonal" board splits it into red/blue
 // triangles with a grey diagonal between them — in both cases a colored tile
 // can only be placed on bare ground of its own color or grey ground, same
-// rule that already governs stacking on top of colored tiles.
+// rule that already governs stacking on top of colored tiles. The "black"
+// board is plain ground with a 2x2 hole blacked out dead centre — unlike
+// red/blue/grey, black ground blocks every placement outright (see rules.js).
 function buildGroundColors(boardType) {
   if (boardType === 'colored') {
     const half = BOARD_SIZE / 2;
@@ -62,6 +64,15 @@ function buildGroundColors(boardType) {
       Array.from({ length: BOARD_SIZE }, (_, col) => {
         if (row === col) return 'grey';
         return row < col ? 'red' : 'blue';
+      })
+    );
+  }
+  if (boardType === 'black') {
+    const mid = BOARD_SIZE / 2;
+    return Array.from({ length: BOARD_SIZE }, (_, row) =>
+      Array.from({ length: BOARD_SIZE }, (_, col) => {
+        const inCenter2x2 = row >= mid - 1 && row <= mid && col >= mid - 1 && col <= mid;
+        return inCenter2x2 ? 'black' : null;
       })
     );
   }

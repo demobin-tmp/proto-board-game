@@ -56,11 +56,14 @@ const GROUND_STROKE = '#cfc6b0';
 
 // Tinted ground for the "colored"/"diagonal" board variants: a light wash of
 // the player's color, distinct from both neutral ground and a placed tile.
-// "grey" marks the diagonal divider on the "diagonal" board.
+// "grey" marks the diagonal divider on the "diagonal" board. "black" marks
+// the permanently-blocked 2x2 hole on the "black" board — dark/void instead
+// of a tint, since nothing can ever be placed there.
 const GROUND_TINT = {
   red:  { fill: '#e8cfc9', stroke: '#d3a99e' },
   blue: { fill: '#cfdbe8', stroke: '#a9c0d3' },
   grey: { fill: '#dcd9d2', stroke: '#b8b4ab' },
+  black: { fill: '#2b2a26', stroke: '#1a1916' },
 };
 
 function groundFill(groundColors, row, col) {

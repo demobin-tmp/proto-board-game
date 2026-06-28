@@ -127,6 +127,15 @@ describe('validatePlacement', () => {
     expect(validatePlacement(board, heights, groundColors, [[0, 0], [0, 1]], 'color', 'red').legal).toBe(true);
     expect(validatePlacement(board, heights, groundColors, [[0, 0], [0, 1]], 'color', 'blue').legal).toBe(true);
   });
+
+  it('on a black board, blocks placement outright for both colored and grey tiles', () => {
+    const board = emptyBoard();
+    const heights = emptyHeights();
+    const groundColors = emptyHeights().map((row) => row.map(() => 'black'));
+
+    expect(validatePlacement(board, heights, groundColors, [[0, 0]], 'color', 'red')).toEqual({ legal: false, reason: 'blocked' });
+    expect(validatePlacement(board, heights, groundColors, [[0, 0]], 'grey', 'red')).toEqual({ legal: false, reason: 'blocked' });
+  });
 });
 
 describe('validateFillerPlacement', () => {
@@ -190,6 +199,14 @@ describe('validateFillerPlacement', () => {
 
     expect(validateFillerPlacement(board, heights, groundColors, 0, 0, 'color', 'blue').legal).toBe(true);
     expect(validateFillerPlacement(board, heights, groundColors, 0, 0, 'color', 'red').legal).toBe(false);
+  });
+
+  it('on a black board, blocks a filler placement outright', () => {
+    const board = emptyBoard();
+    const heights = emptyHeights();
+    const groundColors = emptyHeights().map((row) => row.map(() => 'black'));
+
+    expect(validateFillerPlacement(board, heights, groundColors, 0, 0, 'color', 'red')).toEqual({ legal: false, reason: 'blocked' });
   });
 });
 
