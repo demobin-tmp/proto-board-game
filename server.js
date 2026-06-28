@@ -167,8 +167,137 @@ function janeStrategy(G, color) {
   };
 }
 
+// --- Plateau Score (Luke) ---
+// A "plateau" is a maximal 4-directionally-connected region of cells that
+// are all (a) the same height and (b) buildable by `color` (top is color's
+// own, grey, or bare/unclaimed ground) — i.e. a flat area color could still
+// land a shape across. Bigger, taller plateaus make future placements
+// easier; a lone 1-cell plateau is discounted, since the "must cover >= 2
+// distinct tiles when stacking" rule means only a 1x1 filler — never a real
+// shape — can ever land there.
+function cellTopColorAndHeight(G, row, col) {
+  const stack = G.board[row][col];
+  const height = G.heights[row][col];
+  const color = stack.length ? stack[stack.length - 1].color : (G.groundColors ? G.groundColors[row][col] : null);
+  return { height, color };
+}
+
+function isBuildableBy(color, cellColor) {
+  return cellColor === null || cellColor === color || cellColor === 'grey';
+}
+
+function plateauScore(color, getCellState) {
+  const visited = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(false));
+  let total = 0;
+  for (let row = 0; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      if (visited[row][col]) continue;
+      visited[row][col] = true;
+      const { height, color: cellColor } = getCellState(row, col);
+      if (!isBuildableBy(color, cellColor)) continue;
+
+      let size = 0;
+      const stack = [[row, col]];
+      while (stack.length) {
+        const [r, c] = stack.pop();
+        size++;
+        for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || visited[nr][nc]) continue;
+          const next = getCellState(nr, nc);
+          if (next.height !== height || !isBuildableBy(color, next.color)) continue;
+          visited[nr][nc] = true;
+          stack.push([nr, nc]);
+        }
+      }
+      total += size * (height + 1) * (size === 1 ? 0.8 : 1);
+    }
+  }
+  return total;
+}
+
+// The board state as it would be right after hypothetically placing `cells`
+// as `placedColor` — lets candidate moves be scored by their *resulting*
+// Plateau Score without mutating the real game state.
+function cellStateAfterPlacing(G, placedCells, placedColor, row, col) {
+  if (placedCells.has(`${row},${col}`)) {
+    return { height: G.heights[row][col] + 1, color: placedColor };
+  }
+  return cellTopColorAndHeight(G, row, col);
+}
+
+function resultingPlateauScore(G, color, cells) {
+  const placedCells = new Set(cells.map(([r, c]) => `${r},${c}`));
+  return plateauScore(color, (row, col) => cellStateAfterPlacing(G, placedCells, color, row, col));
+}
+
+// Luke: same shape as Jane (never uses power-ups, skips grey whenever a
+// colored tile is available, same fallback chain) but values a candidate
+// placement by Move Score = immediate score this turn + Plateau Score / 5,
+// so he'll sometimes take a slightly lower-scoring placement that leaves his
+// buildable area bigger/taller for later. Same tie-break order as Jane
+// (distance from centre, then topmost-leftmost) once Move Scores tie.
+function lukeBestFillerMove(G, color) {
+  if ((G.powerUpsUsed?.[color] ?? 0) >= POWER_UP_LIMIT) return null;
+  let best = null;
+  for (let row = 0; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      const result = validateFillerPlacement(G.board, G.heights, G.groundColors, row, col, 'color', color);
+      if (!result.legal) continue;
+      const cells = [[row, col]];
+      const moveScore = scoreForPlacement(1, result.landingHeight) + resultingPlateauScore(G, color, cells) / 5;
+      best = betterCandidate(best, { offerIndex: 0, rotationIndex: 0, row, col, cells, score: moveScore });
+    }
+  }
+  if (!best) return null;
+  return { offerIndex: 0, rotationIndex: 0, row: best.row, col: best.col, flipped: false, useFiller: true, powerUp: null };
+}
+
+function lukeStrategy(G, color) {
+  const offer = ringWindow(G.ring, G.tokenIndex, OFFER_SIZE);
+  const coloredOffers = offer
+    .map((entry, offerIndex) => ({ entry, offerIndex }))
+    .filter(({ entry }) => entry.tile.kind === 'color');
+
+  if (coloredOffers.length === 0) return lukeBestFillerMove(G, color) ?? anyLegalGreyMove(G, color, offer);
+
+  const mirrored = color === 'blue';
+  let best = null;
+
+  for (const { entry, offerIndex } of coloredOffers) {
+    const shape = getShape(entry.tile.shapeId);
+    const rotations = mirrored ? shape.mirroredRotations : shape.rotations;
+
+    for (let rotationIndex = 0; rotationIndex < rotations.length; rotationIndex++) {
+      for (let row = 0; row < BOARD_SIZE; row++) {
+        for (let col = 0; col < BOARD_SIZE; col++) {
+          const cells = absoluteCells(entry.tile.shapeId, rotationIndex, row, col, mirrored);
+          const result = validatePlacement(G.board, G.heights, G.groundColors, cells, entry.tile.kind, color, false);
+          if (!result.legal) continue;
+          const moveScore = scoreForPlacement(cells.length, result.landingHeight) + resultingPlateauScore(G, color, cells) / 5;
+          best = betterCandidate(best, { offerIndex, rotationIndex, row, col, cells, score: moveScore });
+        }
+      }
+    }
+  }
+
+  if (!best) return lukeBestFillerMove(G, color) ?? anyLegalGreyMove(G, color, offer);
+
+  return {
+    offerIndex: best.offerIndex,
+    rotationIndex: best.rotationIndex,
+    row: best.row,
+    col: best.col,
+    flipped: false,
+    useFiller: false,
+    powerUp: null,
+  };
+}
+
 const BOT_STRATEGIES = {
   jane: janeStrategy,
+  luke: lukeStrategy,
 };
 
 const activeBots = new Map(); // matchID -> client

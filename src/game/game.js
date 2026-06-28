@@ -32,6 +32,7 @@ export const PLAYER_COLORS = { '0': 'red', '1': 'blue' };
 // startBot.
 export const BOTS = {
   jane: { name: 'Jane (AI)' },
+  luke: { name: 'Luke (AI)' },
 };
 
 function emptyBoard() {
