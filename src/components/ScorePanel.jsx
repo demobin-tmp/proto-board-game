@@ -1,18 +1,4 @@
-import { POWER_TRACK_MAX } from '../game/game';
-
-function PowerTrack({ value, color }) {
-  const atMax = value >= POWER_TRACK_MAX;
-  return (
-    <span className={`power-track${atMax ? ' power-track-max' : ''}`}>
-      {Array.from({ length: POWER_TRACK_MAX }, (_, i) => (
-        <span key={i} className={`power-pip${i < value ? ' power-pip-filled' : ''}`} />
-      ))}
-      {atMax && <span className="power-skip-label">MAX</span>}
-    </span>
-  );
-}
-
-export default function ScorePanel({ scores, charges, power, myColor, currentColor, gameover }) {
+export default function ScorePanel({ scores, charges, powerUpsLeft, myColor, currentColor, gameover }) {
   function label(color) {
     return color === myColor ? ' (you)' : '';
   }
@@ -20,14 +6,10 @@ export default function ScorePanel({ scores, charges, power, myColor, currentCol
   return (
     <div className="score-panel">
       <div className={`score-pill red${currentColor === 'red' ? ' active' : ''}`}>
-        Red{label('red')}: <strong>{scores.red}</strong>
-        {charges.red > 0 && <span className="charge-badge">⚡{charges.red}</span>}
-        <PowerTrack value={power.red} color="red" />
+        Red{label('red')}: <strong>{scores.red}</strong> {'🔋'.repeat(charges.red)} {'⚡'.repeat(powerUpsLeft.red)}
       </div>
       <div className={`score-pill blue${currentColor === 'blue' ? ' active' : ''}`}>
-        Blue{label('blue')}: <strong>{scores.blue}</strong>
-        {charges.blue > 0 && <span className="charge-badge">⚡{charges.blue}</span>}
-        <PowerTrack value={power.blue} color="blue" />
+        Blue{label('blue')}: <strong>{scores.blue}</strong> {'🔋'.repeat(charges.blue)} {'⚡'.repeat(powerUpsLeft.blue)}
       </div>
 
       {gameover && (

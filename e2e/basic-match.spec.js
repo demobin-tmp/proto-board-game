@@ -117,14 +117,15 @@ test('two players start a seeded match and Red places one legal tile', async ({ 
   const redScoreBeforeCharge = await red.locator('.score-pill.red strong').textContent();
   await placeTile(red, 0, 2, 2, 5);
   // Grey tile: earns a charge, not points.
-  await expect(red.locator('.score-pill.red .charge-badge')).toHaveText('⚡1');
+  await expect(red.locator('.score-pill.red')).toContainText('🔋');
+  await expect(red.locator('.score-pill.red')).not.toContainText('🔋🔋');
   await expect(red.locator('.score-pill.red strong')).toHaveText(redScoreBeforeCharge);
 
   await placeTile(blue, 1, 2, 2, 4);
 
   // Turn 5
   await placeTile(red, 0, 0, 2, 4);
-  await expect(red.locator('.score-pill.red .charge-badge')).toHaveText('⚡2');
+  await expect(red.locator('.score-pill.red')).toContainText('🔋🔋');
 
   await placeTile(blue, 1, 0, 0, 2);
 
@@ -132,8 +133,8 @@ test('two players start a seeded match and Red places one legal tile', async ({ 
   // Red uses additional turn
   await placeTile(red, 2, 1, 3, 1, { activatePowerUp: 'Extra turn', staysActive: true });
 
-  // Extra turn cost 2 charges, and Red had exactly 2 — the badge disappears at 0.
-  await expect(red.locator('.score-pill.red .charge-badge')).toHaveCount(0);
+  // Extra turn cost 2 charges, and Red had exactly 2 — the battery text disappears at 0.
+  await expect(red.locator('.score-pill.red')).not.toContainText('🔋');
   await placeTile(red, 0, 0, 3, 1);
 
   await placeTile(blue, 1, 0, 0, 6);
@@ -160,5 +161,5 @@ test('two players start a seeded match and Red places one legal tile', async ({ 
 
   // Turn 12
   await placeTile(red, 0, 0, 4, 1);
-  await placeTile(blue, 4, 0, 1, 4, { activatePowerUp: 'select from 6' });
+  await placeTile(blue, 4, 0, 1, 4, { activatePowerUp: 'Select from next 6' });
 });

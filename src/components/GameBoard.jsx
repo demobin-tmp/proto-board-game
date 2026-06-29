@@ -25,6 +25,34 @@ function clampAnchor(row, col, rotation) {
 
 const FILLER_ROTATION = [[0, 0]];
 
+const HOW_TO_PLAY_TEXT = `Each turn, pick one of the 3 offered tiles and place it on the board.
+
+• Colored tiles have red on one side and blue on the other.
+• Tiles can be placed on top of other tiles.
+• No overhangs allowed.
+• When a tile is placed on top of others, it must cover at least two tiles underneath.
+• Colored tiles can be placed on grey or on their own color.
+• Grey tiles can be placed on any color.
+• Each colored tile scores by size × layer height.
+• Tiles are organized in a chain. The next player is offered 3 tiles after this player picks.
+• The game can end if the tiles run out.
+• Higher score wins.
+
+
+Use 🔋 to bend the rules and power-up your move:
+• The game can end if someone uses three power-ups (the other player gets 1 more turn).
+• Most power-up move takes some 🔋.
+• Each played grey tile gives you 🔋.
+• Only one power-up can be selected per turn.
+
+
+List of power-up moves:
+• You can drop the selected tile and place a 1x1 tile instead (in your color) plus get 🔋.
+• For one 🔋 you can select once from 6 tiles instead of 3.
+• For two 🔋 you can have an extra turn after this one.
+• For one 🔋 you can place four 1x1 tiles but only on the base layer.
+• For two 🔋 you can ignore the color requirement for one tile.`;
+
 // This is the `board` component handed to boardgame.io's Client. It receives
 // the synced game state (G, ctx) plus a `moves` object whose calls are sent to
 // the server and replicated back to both players.
@@ -36,6 +64,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const [powerUp, setPowerUp] = useState(null);
   const [tokenCells, setTokenCells] = useState([]);
   const [hoveredCell, setHoveredCell] = useState(null);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   // A coarse pointer (touch) has no real hover before a tap, so a tap there
   // only sets the preview — placing requires a separate, explicit Confirm
   // button. A fine pointer (mouse) keeps the original single-click-to-place
@@ -61,6 +90,7 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
   const myCharges = charges[myColor];
   const myPower = power[myColor];
   const myPowerUpsLeft = POWER_UP_LIMIT - powerUpsUsed[myColor];
+  const powerUpsLeft = { red: POWER_UP_LIMIT - powerUpsUsed.red, blue: POWER_UP_LIMIT - powerUpsUsed.blue };
   const underLimit = isActive && myPowerUpsLeft > 0;
   const canExpand = underLimit && myCharges >= 1 && myPower < POWER_TRACK_MAX;
   const canExtraTurn = underLimit && myCharges >= 2 && myPower < POWER_TRACK_MAX;
@@ -217,13 +247,30 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
           : `Pick token ${tokenCells.length + 1} of 4 — click any empty base-level cell.`
         : isTouchDevice
           ? 'Tap a cell to preview, then tap Confirm to place it.'
-          : 'Your turn — pick a shape, then click the board to place it.';
+          : 'Your turn';
+  const canShowHowToPlay = !gameover && isActive && powerUp !== 'tokens' && !isTouchDevice;
 
   return (
     <div className="game-board">
-      <ScorePanel scores={G.scores} charges={charges} power={power} myColor={myColor} currentColor={currentColor} gameover={gameover} />
+      <ScorePanel scores={G.scores} charges={charges} powerUpsLeft={powerUpsLeft} myColor={myColor} currentColor={currentColor} gameover={gameover} />
 
       {turnMessage && <p className="turn-indicator">{turnMessage}</p>}
+      {canShowHowToPlay && (
+        <button type="button" className="how-to-play-button" onClick={() => setShowHowToPlay(true)}>
+          How to play
+        </button>
+      )}
+      {showHowToPlay && (
+        <div className="how-to-play-overlay" onClick={() => setShowHowToPlay(false)}>
+          <div className="how-to-play-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="how-to-play-header">
+              <span>How to play</span>
+              <button type="button" onClick={() => setShowHowToPlay(false)}>✕</button>
+            </div>
+            <div className="how-to-play-body">{HOW_TO_PLAY_TEXT}</div>
+          </div>
+        </div>
+      )}
 
       <div className="board-area">
         <StackedBoard
@@ -238,18 +285,33 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         />
       </div>
 
-      {canConfirm && (
-        <button
-          type="button"
-          className="confirm-placement-button"
-          onClick={confirmPlacement}
-          disabled={!preview?.legal}
-        >
-          {powerUp === 'tokens' ? `Confirm token ${tokenCells.length + 1} of 4` : 'Confirm placement'}
-        </button>
+      {(selectedTile || powerUp === 'tokens') && (
+        <div className="placement-controls">
+          {selectedTile && !useFiller && (
+            <button type="button" className="rotate-button" onClick={rotateSelection}>
+              Rotate ↻
+            </button>
+          )}
+          {canConfirm && (
+            <button
+              type="button"
+              className="confirm-placement-button"
+              onClick={confirmPlacement}
+              disabled={!preview?.legal}
+            >
+              {powerUp === 'tokens' ? `Confirm token ${tokenCells.length + 1} of 4` : 'Confirm placement'}
+            </button>
+          )}
+          {/* Colored tiles are drawn already committed to one handedness
+              (the supply has separate normal/mirrored entries for chiral
+              shapes), so only grey tiles offer a flip side. */}
+          {selectedTile && !useFiller && selectedTile.kind === 'grey' && (
+            <button type="button" className="flip-button" onClick={flipSelection}>
+              Flip ⇄
+            </button>
+          )}
+        </div>
       )}
-
-      <RingInspector ring={G.ring} seen={G.seen} tokenIndex={G.tokenIndex} currentColor={currentColor} />
 
       <TileTrack
         offer={offer}
@@ -268,11 +330,11 @@ export default function GameBoard({ G, ctx, moves, playerID, isActive }) {
         canIgnoreColor={canIgnoreColor}
         powerUpsLeft={myPowerUpsLeft}
         onSelect={selectOffer}
-        onRotate={rotateSelection}
-        onFlip={flipSelection}
         onToggleFiller={toggleFiller}
         onTogglePowerUp={togglePowerUp}
       />
+
+      <RingInspector ring={G.ring} seen={G.seen} tokenIndex={G.tokenIndex} currentColor={currentColor} />
     </div>
   );
 }

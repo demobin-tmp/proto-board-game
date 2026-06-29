@@ -45,7 +45,7 @@ export default function RingInspector({ ring, seen, tokenIndex, currentColor }) 
   return (
     <>
       <button type="button" className="ring-inspector-button" onClick={() => setOpen(true)}>
-        All tiles ↓
+        All tiles chain
       </button>
 
       {open && (

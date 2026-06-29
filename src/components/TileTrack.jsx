@@ -57,12 +57,9 @@ export default function TileTrack({
   canIgnoreColor,
   powerUpsLeft,
   onSelect,
-  onRotate,
-  onFlip,
   onToggleFiller,
   onTogglePowerUp,
 }) {
-  const selectedTile = selectedIndex != null ? offer[selectedIndex] : null;
 
   return (
     <div className="tile-track">
@@ -92,41 +89,23 @@ export default function TileTrack({
           <StaticTile key={tile.tileId} tile={tile} className="offer-tile upcoming-tile" currentColor={currentColor} />
         ))}
       </div>
-      {selectedIndex != null && (
-        <div className="tile-controls">
-          {!useFiller && (
-            <button type="button" className="rotate-button" onClick={onRotate}>
-              Rotate ↻
-            </button>
-          )}
-          {/* Colored tiles are drawn already committed to one handedness
-              (the supply has separate normal/mirrored entries for chiral
-              shapes), so only grey tiles offer a flip side. */}
-          {!useFiller && selectedTile.kind === 'grey' && (
-            <button type="button" className="flip-button" onClick={onFlip}>
-              Flip ⇄
-            </button>
-          )}
-          <button
-            type="button"
-            className="filler-button"
-            onClick={onToggleFiller}
-            disabled={!useFiller && !canUseFiller}
-          >
-            {useFiller ? '⚡ Place full shape' : '⚡ Place 1×1 instead'}
-          </button>
-        </div>
-      )}
       {isActive && (
         <div className="tile-controls">
-          <span className="power-ups-left">{powerUpsLeft} power-up{powerUpsLeft === 1 ? '' : 's'} left</span>
+          <button
+            type="button"
+            className={`empower-button filler-button${useFiller ? ' active' : ''}`}
+            onClick={onToggleFiller}
+            disabled={!useFiller && (!canUseFiller || selectedIndex == null)}
+          >
+            Drop and placelace 1x1 instead, +⚡{useFiller ? ' ✕' : ''}
+          </button>
           <button
             type="button"
             className={`empower-button${powerUp === 'expand' ? ' active' : ''}`}
             onClick={() => onTogglePowerUp('expand')}
             disabled={!canExpand && powerUp !== 'expand'}
           >
-            ⚡ select from 6{powerUp === 'expand' ? ' ✕' : ''}
+            ⚡🔋: Select from next 6{powerUp === 'expand' ? ' ✕' : ''}
           </button>
           <button
             type="button"
@@ -134,7 +113,7 @@ export default function TileTrack({
             onClick={() => onTogglePowerUp('extra-turn')}
             disabled={!canExtraTurn && powerUp !== 'extra-turn'}
           >
-            ⚡⚡ Extra turn{powerUp === 'extra-turn' ? ' ✕' : ''}
+            ⚡⚡🔋: Get extra turn{powerUp === 'extra-turn' ? ' ✕' : ''}
           </button>
           <button
             type="button"
@@ -142,7 +121,7 @@ export default function TileTrack({
             onClick={() => onTogglePowerUp('tokens')}
             disabled={!canPlaceTokens && powerUp !== 'tokens'}
           >
-            ⚡ 4 tokens{powerUp === 'tokens' ? ' ✕' : ''}
+            ⚡🔋: Put 4 tokens on the fist layer{powerUp === 'tokens' ? ' ✕' : ''}
           </button>
           <button
             type="button"
@@ -150,7 +129,7 @@ export default function TileTrack({
             onClick={() => onTogglePowerUp('ignore-color')}
             disabled={!canIgnoreColor && powerUp !== 'ignore-color'}
           >
-            ⚡⚡ Override color{powerUp === 'ignore-color' ? ' ✕' : ''}
+            ⚡⚡🔋: Ignore one piece color{powerUp === 'ignore-color' ? ' ✕' : ''}
           </button>
         </div>
       )}
